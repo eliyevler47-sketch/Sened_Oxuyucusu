@@ -26,7 +26,6 @@ class OfficeViewerActivity : AppCompatActivity() {
             try {
                 val inputStream: InputStream? = contentResolver.openInputStream(uri)
                 if (inputStream != null) {
-                    // Faylın adını və ya növünü yoxlayırıq
                     val fileName = getFileName(uri)
                     
                     when {
@@ -61,7 +60,8 @@ class OfficeViewerActivity : AppCompatActivity() {
                             for ((index, slide) in slideShow.slides.withIndex()) {
                                 stringBuilder.append("Slayd ${index + 1}:\n")
                                 for (shape in slide.shapes) {
-                                    if (shape is org.apache.poi.sl.usermodel.TextShape) {
+                                    // BURADA DÜZƏLİŞ EDİLDİ: <*, *> əlavə olundu
+                                    if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                                         stringBuilder.append(shape.text).append("\n")
                                     }
                                 }
@@ -81,7 +81,6 @@ class OfficeViewerActivity : AppCompatActivity() {
         }
     }
 
-    // Faylın həqiqi adını tapmaq üçün köməkçi funksiya
     private fun getFileName(uri: android.net.Uri): String {
         var result: String? = null
         if (uri.scheme == "content") {
