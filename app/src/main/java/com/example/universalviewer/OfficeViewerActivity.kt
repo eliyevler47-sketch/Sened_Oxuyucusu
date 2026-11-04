@@ -92,8 +92,8 @@ class OfficeViewerActivity : AppCompatActivity() {
                                     stringBuilder.append("📌 Slayd ${index + 1}\n\n")
                                     for (shape in slide.shapes) {
                                         if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
-                                            // Hər paraqrafı ayrıca götürürük ki, bəndlər (bullet) qorunsun
-                                            for (paragraph in shape.paragraphs) {
+                                            // DÜZƏLİŞ: paragraphs yerinə textParagraphs istifadə edildi
+                                            for (paragraph in shape.textParagraphs) {
                                                 if (paragraph.text.isNotBlank()) {
                                                     stringBuilder.append("• ").append(paragraph.text).append("\n")
                                                 }
