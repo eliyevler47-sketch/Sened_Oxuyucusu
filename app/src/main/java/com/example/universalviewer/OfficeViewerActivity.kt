@@ -1,9 +1,13 @@
 package com.example.universalviewer
 
+import android.graphics.Color
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xslf.usermodel.XMLSlideShow
@@ -13,12 +17,23 @@ import java.io.InputStream
 class OfficeViewerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val textView = TextView(this).apply { 
-            setPadding(40, 40, 40, 40)
-            textSize = 16f 
+        
+        val scrollView = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#F0F0F0")) } // Açıq boz fon
+        val container = LinearLayout(this).apply { 
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 24, 24, 24)
         }
-        val scrollView = ScrollView(this)
-        scrollView.addView(textView)
+        
+        val textView = TextView(this).apply { 
+            setPadding(32, 32, 32, 32)
+            textSize = 16f
+            setTextColor(Color.BLACK)
+            setBackgroundColor(Color.WHITE) // Sənəd ağ vərəqdə
+            setLineSpacing(1.2f, 1.2f)
+        }
+        
+        container.addView(textView)
+        scrollView.addView(container)
         setContentView(scrollView)
 
         val uri = intent.data
@@ -32,19 +47,23 @@ class OfficeViewerActivity : AppCompatActivity() {
                         fileName.endsWith(".docx", true) -> {
                             val document = XWPFDocument(inputStream)
                             val extractor = XWPFWordExtractor(document)
-                            textView.text = "--- WORD SƏNƏDİ ---\n\n" + extractor.text
+                            textView.text = "📄 WORD SƏNƏDİ\n\n" + extractor.text
                             extractor.close()
                         }
                         fileName.endsWith(".xlsx", true) -> {
                             val workbook = XSSFWorkbook(inputStream)
-                            val stringBuilder = StringBuilder("--- EXCEL CƏDVƏLİ ---\n\n")
+                            val stringBuilder = StringBuilder("📊 EXCEL CƏDVƏLİ\n\n")
                             
+                            // Formulları yox, həqiqi dəyərləri oxuyan formatlayıcı
+                            val formatter = DataFormatter() 
+
                             for (sheetIndex in 0 until workbook.numberOfSheets) {
                                 val sheet = workbook.getSheetAt(sheetIndex)
                                 stringBuilder.append("Vərəq: ${sheet.sheetName}\n")
                                 for (row in sheet) {
                                     for (cell in row) {
-                                        stringBuilder.append("${cell.toString()}  |  ")
+                                        // cell.toString() yerinə formatter.formatCellValue(cell) istifadə edirik
+                                        stringBuilder.append("${formatter.formatCellValue(cell)}  |  ")
                                     }
                                     stringBuilder.append("\n")
                                 }
@@ -55,12 +74,11 @@ class OfficeViewerActivity : AppCompatActivity() {
                         }
                         fileName.endsWith(".pptx", true) -> {
                             val slideShow = XMLSlideShow(inputStream)
-                            val stringBuilder = StringBuilder("--- POWERPOINT SLAYDARI ---\n\n")
+                            val stringBuilder = StringBuilder("📺 POWERPOINT SLAYDARI\n\n")
                             
                             for ((index, slide) in slideShow.slides.withIndex()) {
                                 stringBuilder.append("Slayd ${index + 1}:\n")
                                 for (shape in slide.shapes) {
-                                    // BURADA DÜZƏLİŞ EDİLDİ: <*, *> əlavə olundu
                                     if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                                         stringBuilder.append(shape.text).append("\n")
                                     }
