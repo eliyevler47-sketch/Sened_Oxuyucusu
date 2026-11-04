@@ -1,13 +1,19 @@
 package com.example.universalviewer
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,17 +41,13 @@ class OfficeViewerActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT
             )
             setPadding(24, 24, 24, 24)
+            setBackgroundColor(Color.parseColor("#E0E0E0")) // Arxa fon boz
         }
         
-        val textView = TextView(this).apply {
-            setPadding(48, 48, 48, 48)
-            textSize = 16f
-            setTextColor(Color.parseColor("#333333"))
-            setBackgroundColor(Color.WHITE)
-            setLineSpacing(1.5f, 1.3f)
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
         }
-        
-        scrollView.addView(textView)
+        scrollView.addView(contentLayout)
         container.addView(scrollView)
 
         val uri = intent.data
@@ -55,71 +57,141 @@ class OfficeViewerActivity : AppCompatActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = getFileName(uri)
-                        var resultText = ""
-
-                        when {
-                            fileName.endsWith(".docx", true) -> {
-                                val document = XWPFDocument(inputStream)
-                                val extractor = XWPFWordExtractor(document)
-                                resultText = "📄 WORD SƏNƏDİ\n\n" + extractor.text
-                                extractor.close()
-                            }
-                            fileName.endsWith(".xlsx", true) -> {
-                                val workbook = XSSFWorkbook(inputStream)
-                                val stringBuilder = StringBuilder("📊 EXCEL CƏDVƏLİ\n\n")
-                                val formatter = DataFormatter()
-                                
-                                for (sheetIndex in 0 until workbook.numberOfSheets) {
-                                    val sheet = workbook.getSheetAt(sheetIndex)
-                                    stringBuilder.append("📌 Vərəq: ${sheet.sheetName}\n\n")
-                                    for (row in sheet) {
-                                        for (cell in row) {
-                                            stringBuilder.append("${formatter.formatCellValue(cell)}\t | \t")
-                                        }
-                                        stringBuilder.append("\n")
-                                    }
-                                    stringBuilder.append("\n──────────────────\n\n")
-                                }
-                                resultText = stringBuilder.toString()
-                                workbook.close()
-                            }
-                            fileName.endsWith(".pptx", true) -> {
-                                val slideShow = XMLSlideShow(inputStream)
-                                val stringBuilder = StringBuilder("📺 POWERPOINT TƏQDİMATI\n\n")
-                                
-                                for ((index, slide) in slideShow.slides.withIndex()) {
-                                    stringBuilder.append("📌 Slayd ${index + 1}\n\n")
-                                    for (shape in slide.shapes) {
-                                        if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
-                                            // DÜZƏLİŞ: Mətni textRuns vasitəsilə alırıq
-                                            for (paragraph in shape.textParagraphs) {
-                                                val pText = paragraph.textRuns.joinToString("") { it.rawText ?: "" }
-                                                if (pText.isNotBlank()) {
-                                                    stringBuilder.append("• ").append(pText).append("\n")
-                                                }
-                                            }
-                                            stringBuilder.append("\n")
-                                        }
-                                    }
-                                    stringBuilder.append("──────────────────\n\n")
-                                }
-                                resultText = stringBuilder.toString()
-                                slideShow.close()
-                            }
-                            else -> resultText = "Bu Ofis faylı növü dəstəklənmir."
-                        }
-
+                        
                         withContext(Dispatchers.Main) {
-                            textView.text = resultText
+                            when {
+                                fileName.endsWith(".docx", true) -> {
+                                    contentLayout.addView(createWordView(inputStream))
+                                }
+                                fileName.endsWith(".xlsx", true) -> {
+                                    contentLayout.addView(createExcelView(inputStream))
+                                }
+                                fileName.endsWith(".pptx", true) -> {
+                                    createPptxView(inputStream, contentLayout)
+                                }
+                                else -> {
+                                    contentLayout.addView(TextView(this@OfficeViewerActivity).apply { text = "Dəstəklənmir" })
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        textView.text = "Fayl oxunarkən xəta baş verdi:\n${e.message}"
+                        contentLayout.addView(TextView(this@OfficeViewerActivity).apply { text = "Xəta: ${e.message}" })
                     }
                 }
             }
         }
+    }
+
+    // WORD OXUYUCUSU
+    private fun createWordView(inputStream: InputStream): TextView {
+        val document = XWPFDocument(inputStream)
+        val extractor = XWPFWordExtractor(document)
+        val text = extractor.text
+        extractor.close()
+        
+        return TextView(this).apply {
+            this.text = text
+            setPadding(48, 48, 48, 48)
+            textSize = 16f
+            setTextColor(Color.BLACK)
+            setBackgroundColor(Color.WHITE)
+            setLineSpacing(1.5f, 1.3f)
+        }
+    }
+
+    // EXCEL OXUYUCUSU
+    private fun createExcelView(inputStream: InputStream): TextView {
+        val workbook = XSSFWorkbook(inputStream)
+        val stringBuilder = StringBuilder("📊 EXCEL CƏDVƏLİ\n\n")
+        val formatter = DataFormatter()
+        
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val sheet = workbook.getSheetAt(sheetIndex)
+            stringBuilder.append("📌 Vərəq: ${sheet.sheetName}\n\n")
+            for (row in sheet) {
+                for (cell in row) {
+                    stringBuilder.append("${formatter.formatCellValue(cell)}\t | \t")
+                }
+                stringBuilder.append("\n")
+            }
+            stringBuilder.append("\n──────────────────\n\n")
+        }
+        workbook.close()
+
+        return TextView(this).apply {
+            this.text = stringBuilder.toString()
+            setPadding(48, 48, 48, 48)
+            textSize = 14f
+            setTextColor(Color.BLACK)
+            setBackgroundColor(Color.WHITE)
+            setLineSpacing(1.3f, 1.3f)
+        }
+    }
+
+    // POWERPOINT OXUYUCUSU (Rəngləri və Stilləri qoruyur)
+    private fun createPptxView(inputStream: InputStream, container: LinearLayout) {
+        val slideShow = XMLSlideShow(inputStream)
+        
+        for ((index, slide) in slideShow.slides.withIndex()) {
+            val card = MaterialCardView(this).apply {
+                radius = 16f
+                cardElevation = 8f
+                setContentPadding(32, 32, 32, 32)
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                params.setMargins(0, 0, 0, 32)
+                layoutParams = params
+                setCardBackgroundColor(Color.WHITE)
+            }
+
+            val slideText = TextView(this).apply {
+                textSize = 16f
+                setTextColor(Color.BLACK)
+                setLineSpacing(1.4f, 1.4f)
+            }
+
+            val spannableBuilder = SpannableStringBuilder()
+            spannableBuilder.append("📌 Slayd ${index + 1}\n\n")
+
+            for (shape in slide.shapes) {
+                if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
+                    for (paragraph in shape.textParagraphs) {
+                        var paragraphText = ""
+                        for (run in paragraph.textRuns) {
+                            val start = spannableBuilder.length
+                            val text = run.rawText ?: ""
+                            spannableBuilder.append(text)
+                            paragraphText += text
+
+                            // Şrift stilləri (Qalın, Maili)
+                            if (run.isBold) {
+                                spannableBuilder.setSpan(StyleSpan(Typeface.BOLD), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            }
+                            if (run.isItalic) {
+                                spannableBuilder.setSpan(StyleSpan(Typeface.ITALIC), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            }
+                            // Rəng (Əgər varsa)
+                            val color = run.fontColor
+                            if (color != null) {
+                                spannableBuilder.setSpan(ForegroundColorSpan(color.rgb), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            }
+                        }
+                        if (paragraphText.isNotBlank()) {
+                            spannableBuilder.append("\n")
+                        }
+                    }
+                }
+            }
+
+            slideText.text = spannableBuilder
+            card.addView(slideText)
+            container.addView(card)
+        }
+        slideShow.close()
     }
 
     private fun getFileName(uri: android.net.Uri): String {
