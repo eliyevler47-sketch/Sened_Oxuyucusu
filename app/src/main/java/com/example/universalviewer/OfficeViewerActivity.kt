@@ -42,7 +42,7 @@ class OfficeViewerActivity : AppCompatActivity() {
             textSize = 16f
             setTextColor(Color.parseColor("#333333"))
             setBackgroundColor(Color.WHITE)
-            setLineSpacing(1.5f, 1.3f) // Sətirlər arası məsafə
+            setLineSpacing(1.5f, 1.3f)
         }
         
         scrollView.addView(textView)
@@ -74,7 +74,6 @@ class OfficeViewerActivity : AppCompatActivity() {
                                     stringBuilder.append("📌 Vərəq: ${sheet.sheetName}\n\n")
                                     for (row in sheet) {
                                         for (cell in row) {
-                                            // cell.toString() yerinə formatter istifadə edirik ki, formul yox, rəqəm göstərsin
                                             stringBuilder.append("${formatter.formatCellValue(cell)}\t | \t")
                                         }
                                         stringBuilder.append("\n")
@@ -92,10 +91,11 @@ class OfficeViewerActivity : AppCompatActivity() {
                                     stringBuilder.append("📌 Slayd ${index + 1}\n\n")
                                     for (shape in slide.shapes) {
                                         if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
-                                            // DÜZƏLİŞ: paragraphs yerinə textParagraphs istifadə edildi
+                                            // DÜZƏLİŞ: Mətni textRuns vasitəsilə alırıq
                                             for (paragraph in shape.textParagraphs) {
-                                                if (paragraph.text.isNotBlank()) {
-                                                    stringBuilder.append("• ").append(paragraph.text).append("\n")
+                                                val pText = paragraph.textRuns.joinToString("") { it.rawText ?: "" }
+                                                if (pText.isNotBlank()) {
+                                                    stringBuilder.append("• ").append(pText).append("\n")
                                                 }
                                             }
                                             stringBuilder.append("\n")
