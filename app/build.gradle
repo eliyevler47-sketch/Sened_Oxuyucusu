@@ -8,11 +8,11 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.universalviewer"
-        minSdk 24
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
+    applicationId "com.example.universalviewer"
+    minSdk 26 // 24-dən 26-ya dəyişdirildi
+    targetSdk 34
+    versionCode 1
+    versionName "1.0"
     }
 
     buildFeatures {
