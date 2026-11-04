@@ -14,7 +14,13 @@ class MainActivity : AppCompatActivity() {
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri != null) routeFile(uri)
+        if (uri != null) {
+            // Fayl seçildikdə icazə alırıq ki, başqa ekranlarda oxuya bilək
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: Exception) { }
+            routeFile(uri)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,21 +28,32 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 1. Proqramın daxilindəki düymə üçün
         binding.btnOpenFile.setOnClickListener {
             filePickerLauncher.launch(arrayOf("*/*"))
+        }
+
+        // 2. Telefondan "Proqramla aç" deyəndə işləməsi üçün
+        if (intent?.action == Intent.ACTION_VIEW) {
+            intent.data?.let { uri ->
+                routeFile(uri)
+            }
         }
     }
 
     private fun routeFile(uri: Uri) {
         val mimeType = contentResolver.getType(uri)
+        val fileName = getFileName(uri).lowercase()
+        
         when {
-            mimeType?.contains("pdf") == true -> {
+            mimeType?.contains("pdf") == true || fileName.endsWith(".pdf") -> {
                 startActivity(Intent(this, PdfViewerActivity::class.java).apply { data = uri })
             }
-            mimeType?.contains("word") == true || mimeType?.contains("officedocument") == true -> {
+            mimeType?.contains("word") == true || mimeType?.contains("officedocument") == true || 
+            fileName.endsWith(".docx") || fileName.endsWith(".xlsx") || fileName.endsWith(".pptx") -> {
                 startActivity(Intent(this, OfficeViewerActivity::class.java).apply { data = uri })
             }
-            mimeType?.contains("html") == true || mimeType?.contains("text") == true -> {
+            mimeType?.contains("html") == true || mimeType?.contains("text") == true || fileName.endsWith(".txt") -> {
                 startActivity(Intent(this, HtmlViewerActivity::class.java).apply { data = uri })
             }
             mimeType?.startsWith("image/") == true -> {
@@ -46,5 +63,22 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Bu fayl növü dəstəklənmir.", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    // Faylın adını tapmaq üçün köməkçi funksiya
+    private fun getFileName(uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) result = cursor.getString(index)
+                }
+            } finally {
+                cursor?.close()
+            }
+        }
+        return result ?: uri.path?.substringAfterLast('/') ?: ""
     }
 }
