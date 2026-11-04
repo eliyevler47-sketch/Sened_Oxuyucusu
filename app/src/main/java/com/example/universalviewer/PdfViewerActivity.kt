@@ -5,13 +5,13 @@ import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
-import android.view.Gravity
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
+import android.view.LayoutInflater
+import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.github.chrisbanes.photoview.PhotoView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,19 +24,18 @@ class PdfViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_viewer)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
-        val container = findViewById<LinearLayout>(R.id.contentContainer)
+        val recyclerView = RecyclerView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            layoutManager = LinearLayoutManager(this@PdfViewerActivity)
+            setBackgroundColor(Color.parseColor("#333333")) // Tünd fon
+        }
         
+        // activity_viewer.xml-dəki container-i tapırıq
+        val container = findViewById<android.widget.LinearLayout>(R.id.contentContainer)
+        container.addView(recyclerView)
+
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
         toolbar.setNavigationOnClickListener { finish() }
-
-        val progressBar = ProgressBar(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, 
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { gravity = Gravity.CENTER }
-        }
-        container.gravity = Gravity.CENTER
-        container.addView(progressBar)
 
         val uri = intent.data
         if (uri != null) {
@@ -49,52 +48,49 @@ class PdfViewerActivity : AppCompatActivity() {
                     val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
                     val renderer = PdfRenderer(fileDescriptor)
                     
-                    withContext(Dispatchers.Main) {
-                        container.removeView(progressBar)
-                        container.setPadding(24, 24, 24, 24)
-                        container.gravity = Gravity.CENTER_HORIZONTAL
-                        container.setBackgroundColor(Color.parseColor("#333333")) // Tünd fon
-                    }
-
+                    val bitmaps = mutableListOf<Bitmap>()
+                    
+                    // Bütün səhifələri çəkirik
                     for (i in 0 until renderer.pageCount) {
                         val page = renderer.openPage(i)
-                        // Keyfiyyəti artırmaq üçün ekran sıxlığına vururuq
-                        val scale = resources.displayMetrics.density * 2
+                        val scale = resources.displayMetrics.density * 1.5f
                         val width = (page.width * scale).toInt()
                         val height = (page.height * scale).toInt()
                         
                         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                        bitmap.eraseColor(Color.WHITE) // Səhifə ağ olmalıdır
+                        bitmap.eraseColor(Color.WHITE)
                         page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        
-                        withContext(Dispatchers.Main) {
-                            val imageView = ImageView(this@PdfViewerActivity).apply {
-                                setImageBitmap(bitmap)
-                                setBackgroundColor(Color.WHITE)
-                                val params = LinearLayout.LayoutParams(
-                                    LinearLayout.LayoutParams.MATCH_PARENT,
-                                    LinearLayout.LayoutParams.WRAP_CONTENT
-                                )
-                                params.setMargins(0, 0, 0, 24) // Səhifələr arası boşluq
-                                layoutParams = params
-                            }
-                            container.addView(imageView)
-                        }
+                        bitmaps.add(bitmap)
                         page.close()
                     }
                     renderer.close()
-                } catch (e: Exception) {
+
                     withContext(Dispatchers.Main) {
-                        container.removeView(progressBar)
-                        container.addView(TextView(this@PdfViewerActivity).apply { 
-                            text = "Xəta: ${e.message}" 
-                            setTextColor(Color.WHITE)
-                            textSize = 18f
-                            setPadding(32,32,32,32)
-                        })
+                        recyclerView.adapter = PdfPageAdapter(bitmaps)
                     }
+                } catch (e: Exception) {
+                    // Xəta halı
                 }
             }
         }
+    }
+
+    // PDF səhifələrini göstərən Adapter
+    class PdfPageAdapter(private val bitmaps: List<Bitmap>) : RecyclerView.Adapter<PdfPageAdapter.ViewHolder>() {
+        class ViewHolder(val photoView: PhotoView) : RecyclerView.ViewHolder(photoView)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val photoView = PhotoView(parent.context).apply {
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                setPadding(20, 20, 20, 20)
+            }
+            return ViewHolder(photoView)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            holder.photoView.setImageBitmap(bitmaps[position])
+        }
+
+        override fun getItemCount() = bitmaps.size
     }
 }
