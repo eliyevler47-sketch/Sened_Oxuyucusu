@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:background="#F3F4F6">
 
-    <!-- Yuxarı Panel (Toolbar) -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -17,7 +16,6 @@
         app:title="Sənəd adı"
         app:titleTextColor="#FFFFFF" />
 
-    <!-- Sənədin yerləşəcəyi sahə -->
     <LinearLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
