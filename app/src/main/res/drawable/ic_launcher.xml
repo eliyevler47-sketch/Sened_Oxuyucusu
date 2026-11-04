@@ -1,10 +1,33 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#0F172A" android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M54,22 C68,22 78,35 78,52 C84,56 82,75 74,82 C66,89 55,90 54,90 C53,90 42,89 34,82 C26,75 24,56 30,52 C30,35 40,22 54,22 Z" />
-    <path android:fillColor="#0F172A" android:pathData="M42,54 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
-    <path android:fillColor="#0F172A" android:pathData="M59,54 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
-    <path android:fillColor="#F59E0B" android:pathData="M54,84 L43,77 L43,91 Z" />
-    <path android:fillColor="#F59E0B" android:pathData="M54,84 L65,77 L65,91 Z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- 1. PREMIUM ARXA FON: Dərin Kosmik Mavi -->
+    <path
+        android:fillColor="#1E1B4B"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+
+    <!-- 2. KONSEPT: Rəqəmsal Sənəd Forması (Bənövşəyi Neon Xətt) -->
+    <!-- Arxa plandaki sürət effekti üçün kölgə/forma -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M34,20 L74,20 A8,8 0 0,1 82,28 L82,80 A8,8 0 0,1 74,88 L34,88 A8,8 0 0,1 26,80 L26,28 A8,8 0 0,1 34,20 Z" />
+
+    <!-- 3. SƏNƏDİN İÇİ (Ağ rəngli forma) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,24 L72,24 A4,4 0 0,1 76,28 L76,76 A4,4 0 0,1 72,80 L36,80 A4,4 0 0,1 32,76 L32,28 A4,4 0 0,1 36,24 Z" />
+
+    <!-- 4. "U" HƏRFİ VƏ YA UNIVERSAL İKON (Bənövşəyi neon rəngdə) -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M44,40 L44,56 A10,10 0 0,0 64,56 L64,40 L58,40 L58,56 A4,4 0 0,1 50,56 L50,40 Z" />
+
+    <!-- 5. DİQQƏT ÇƏKƏN DETAL: Aşağı hissədə parlayan nöqtə (AI/Sürət rəmzi) -->
+    <path
+        android:fillColor="#8B5CF6"
+        android:pathData="M54,66 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+        
 </vector>
