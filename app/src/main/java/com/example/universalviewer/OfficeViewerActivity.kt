@@ -1,26 +1,17 @@
 package com.example.universalviewer
 
 import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Bundle
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.StyleSpan
 import android.view.ViewGroup
+import android.webkit.WebView
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.poi.ss.usermodel.DataFormatter
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xslf.usermodel.XMLSlideShow
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
@@ -37,6 +28,13 @@ class OfficeViewerActivity : AppCompatActivity() {
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Ofis Sənədi"
         toolbar.setNavigationOnClickListener { finish() }
 
+        val webView = WebView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(Color.parseColor("#F3F4F6"))
+            settings.javaScriptEnabled = true
+        }
+        container.addView(webView)
+
         val uri = intent.data
         if (uri != null) {
             lifecycleScope.launch(Dispatchers.IO) {
@@ -44,165 +42,100 @@ class OfficeViewerActivity : AppCompatActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = getFileName(uri)
-                        
+                        var htmlContent = ""
+
                         when {
                             fileName.endsWith(".docx", true) -> {
-                                val text = readWord(inputStream)
-                                withContext(Dispatchers.Main) { showWord(text, container) }
+                                htmlContent = convertWordToHtml(inputStream)
                             }
                             fileName.endsWith(".xlsx", true) -> {
-                                val text = readExcel(inputStream)
-                                withContext(Dispatchers.Main) { showExcel(text, container) }
+                                htmlContent = convertExcelToHtml(inputStream)
                             }
                             fileName.endsWith(".pptx", true) -> {
-                                val slides = readPptx(inputStream)
-                                withContext(Dispatchers.Main) { showPptx(slides, container) }
+                                htmlContent = convertPptToHtml(inputStream)
                             }
+                            else -> {
+                                htmlContent = "<h3>Bu fayl dəstəklənmir.</h3>"
+                            }
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
                         }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        container.addView(TextView(this@OfficeViewerActivity).apply { text = "Xəta: ${e.message}"; setPadding(32,32,32,32) })
+                        webView.loadData("<h3 style='color:red;'>Xəta: ${e.message}</h3>", "text/html", "UTF-8")
                     }
                 }
             }
         }
     }
 
-    // --- WORD OXUYUCUSU ---
-    private fun readWord(inputStream: InputStream): String {
+    // --- WORD-Ü HTML-Ə ÇEVİRİRİK ---
+    private fun convertWordToHtml(inputStream: InputStream): String {
         val document = XWPFDocument(inputStream)
-        val extractor = XWPFWordExtractor(document)
-        val text = extractor.text
-        extractor.close()
-        return text
-    }
-
-    private fun showWord(text: String, container: LinearLayout) {
-        val scrollView = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#E0E0E0")) }
-        val textView = TextView(this).apply {
-            this.text = text
-            setPadding(48, 48, 48, 48)
-            textSize = 16f
-            setTextColor(Color.BLACK)
-            setBackgroundColor(Color.WHITE)
-            setLineSpacing(1.5f, 1.3f)
-        }
-        scrollView.addView(textView)
-        container.addView(scrollView)
-    }
-
-    // --- EXCEL OXUYUCUSU (Formulları Hesablayır) ---
-    private fun readExcel(inputStream: InputStream): String {
-        val workbook = XSSFWorkbook(inputStream)
-        val stringBuilder = StringBuilder("📊 EXCEL CƏDVƏLİ\n\n")
-        val formatter = DataFormatter()
-        // FORMULLARI HESABLAYAN ƏSAS HİSSƏ
-        val evaluator = workbook.creationHelper.createFormulaEvaluator()
+        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:20px; line-height:1.6;} .paper{background:white; padding:40px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);}</style></head><body><div class='paper'>")
         
+        for (paragraph in document.paragraphs) {
+            if (paragraph.text.isNotBlank()) {
+                html.append("<p>").append(paragraph.text).append("</p>")
+            }
+        }
+        html.append("</div></body></html>")
+        document.close()
+        return html.toString()
+    }
+
+    // --- EXCEL-İ HTML CƏDVƏLİNƏ ÇEVİRİRİK ---
+    private fun convertExcelToHtml(inputStream: InputStream): String {
+        val workbook = XSSFWorkbook(inputStream)
+        val formatter = DataFormatter()
+        val evaluator = workbook.creationHelper.createFormulaEvaluator()
+        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:20px;} .paper{background:white; padding:20px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1); overflow-x:auto;} table{border-collapse:collapse; width:100%;} th,td{border:1px solid #ccc; padding:8px; text-align:left;} th{background:#f4f4f4;}</style></head><body><div class='paper'>")
+
         for (sheetIndex in 0 until workbook.numberOfSheets) {
             val sheet = workbook.getSheetAt(sheetIndex)
-            stringBuilder.append("📌 Vərəq: ${sheet.sheetName}\n\n")
-            for (row in sheet) {
+            html.append("<h3>Vərəq: ${sheet.sheetName}</h3>")
+            html.append("<table>")
+            for ((rowIndex, row) in sheet.withIndex()) {
+                html.append("<tr>")
                 for (cell in row) {
-                    // formatter.formatCellValue(cell, evaluator) -> Formulu hesablayıb nəticəni göstərir
-                    val cellValue = formatter.formatCellValue(cell, evaluator)
-                    stringBuilder.append("$cellValue\t | \t")
+                    val valStr = formatter.formatCellValue(cell, evaluator)
+                    if (rowIndex == 0) html.append("<th>$valStr</th>") else html.append("<td>$valStr</td>")
                 }
-                stringBuilder.append("\n")
+                html.append("</tr>")
             }
-            stringBuilder.append("\n──────────────────\n\n")
+            html.append("</table><br><br>")
         }
+        html.append("</div></body></html>")
         workbook.close()
-        return stringBuilder.toString()
+        return html.toString()
     }
 
-    private fun showExcel(text: String, container: LinearLayout) {
-        val scrollView = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#E0E0E0")) }
-        val textView = TextView(this).apply {
-            this.text = text
-            setPadding(32, 32, 32, 32)
-            textSize = 14f
-            setTextColor(Color.BLACK)
-            setBackgroundColor(Color.WHITE)
-            setLineSpacing(1.3f, 1.3f)
-            typeface = Typeface.MONOSPACE // Cədvəl düzgün görünsün deyə
-        }
-        scrollView.addView(textView)
-        container.addView(scrollView)
-    }
-
-    // --- POWERPOINT OXUYUCUSU ---
-    private fun readPptx(inputStream: InputStream): List<SpannableStringBuilder> {
+    // --- POWERPOINT-İ HTML SLAYD KARTLARINA ÇEVİRİRİK ---
+    private fun convertPptToHtml(inputStream: InputStream): String {
         val slideShow = XMLSlideShow(inputStream)
-        val slideList = mutableListOf<SpannableStringBuilder>()
+        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:15px; background:#f3f4f6;} .slide{background:white; padding:30px; margin-bottom:25px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);} .title{color:#1E1B4B; font-size:14px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:20px;} .content{font-size:16px; color:#333; line-height:1.6;}</style></head><body>")
         
         for ((index, slide) in slideShow.slides.withIndex()) {
-            val spannableBuilder = SpannableStringBuilder()
-            spannableBuilder.append("📌 Slayd ${index + 1}\n\n")
-
+            html.append("<div class='slide'>")
+            html.append("<div class='title'>Slayd ${index + 1}</div>")
+            html.append("<div class='content'>")
             for (shape in slide.shapes) {
                 if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                     for (paragraph in shape.textParagraphs) {
-                        var paragraphText = ""
-                        for (run in paragraph.textRuns) {
-                            val start = spannableBuilder.length
-                            val text = run.rawText ?: ""
-                            spannableBuilder.append(text)
-                            paragraphText += text
-
-                            if (run.isBold) spannableBuilder.setSpan(StyleSpan(Typeface.BOLD), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            if (run.isItalic) spannableBuilder.setSpan(StyleSpan(Typeface.ITALIC), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        if (paragraph.text.isNotBlank()) {
+                            html.append("<p>").append(paragraph.text).append("</p>")
                         }
-                        if (paragraphText.isNotBlank()) spannableBuilder.append("\n")
                     }
                 }
             }
-            slideList.add(spannableBuilder)
+            html.append("</div></div>")
         }
+        html.append("</body></html>")
         slideShow.close()
-        return slideList
-    }
-
-    private fun showPptx(slides: List<SpannableStringBuilder>, container: LinearLayout) {
-        val recyclerView = RecyclerView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            layoutManager = LinearLayoutManager(this@OfficeViewerActivity)
-            setBackgroundColor(Color.parseColor("#E0E0E0"))
-            setPadding(24, 24, 24, 24)
-        }
-        recyclerView.adapter = PptxAdapter(slides)
-        container.addView(recyclerView)
-    }
-
-    class PptxAdapter(private val slides: List<SpannableStringBuilder>) : RecyclerView.Adapter<PptxAdapter.ViewHolder>() {
-        class ViewHolder(val card: MaterialCardView) : RecyclerView.ViewHolder(card)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val card = MaterialCardView(parent.context).apply {
-                radius = 16f
-                cardElevation = 8f
-                setContentPadding(32, 32, 32, 32)
-                val params = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT)
-                params.setMargins(0, 0, 0, 32)
-                layoutParams = params
-                setCardBackgroundColor(Color.WHITE)
-            }
-            return ViewHolder(card)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val textView = TextView(holder.card.context).apply {
-                text = slides[position]
-                textSize = 16f
-                setTextColor(Color.BLACK)
-                setLineSpacing(1.4f, 1.4f)
-            }
-            holder.card.removeAllViews()
-            holder.card.addView(textView)
-        }
-
-        override fun getItemCount() = slides.size
+        return html.toString()
     }
 
     private fun getFileName(uri: android.net.Uri): String {
