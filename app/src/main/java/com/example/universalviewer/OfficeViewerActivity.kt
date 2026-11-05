@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
 import android.util.Base64
-import android.view.MenuItem
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -13,6 +12,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,7 +26,6 @@ import java.io.InputStream
 class OfficeViewerActivity : BaseViewerActivity() {
     private lateinit var webView: WebView
     private var currentFontSize = 16
-    private var isDarkMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,16 +33,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Sənəd"
-        
-        // AXTARIŞ DÜYMƏSİ ƏLAVƏ EDİRİK
-        toolbar.inflateMenu(R.menu.viewer_menu)
-        toolbar.setOnMenuItemClickListener { item ->
-            when(item.itemId) {
-                R.id.action_search -> { showSearchDialog(); true }
-                R.id.action_open_new -> { openNewFile(); true }
-                else -> false
-            }
-        }
         toolbar.setNavigationOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.contentContainer)
@@ -68,8 +57,9 @@ class OfficeViewerActivity : BaseViewerActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = getFileName(uri).lowercase()
+                        
+                        // Faylı oxuyuruq
                         val bytes = inputStream.readBytes()
-                        val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
                         inputStream.close()
 
                         withContext(Dispatchers.Main) {
@@ -81,16 +71,20 @@ class OfficeViewerActivity : BaseViewerActivity() {
                             webView.webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
+                                    
                                     if (fileName.endsWith(".docx")) {
+                                        val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderDocx('$base64String');", null)
-                                    } else if (fileName.endsWith(".xlsx")) {
-                                        val html = convertExcelToHtml(inputStream)
-                                        val escapedHtml = html.replace("'", "\\'").replace("\n", "")
-                                        webView.evaluateJavascript("renderHtml('$escapedHtml');", null)
-                                    } else if (fileName.endsWith(".pptx")) {
-                                        val html = convertPptToHtml(inputStream)
-                                        val escapedHtml = html.replace("'", "\\'").replace("\n", "")
-                                        webView.evaluateJavascript("renderHtml('$escapedHtml');", null)
+                                    } 
+                                    else if (fileName.endsWith(".xlsx")) {
+                                        val html = convertExcelToHtml(bytes.inputStream())
+                                        val base64Html = Base64.encodeToString(html.toByteArray(), Base64.NO_WRAP)
+                                        webView.evaluateJavascript("renderHtml('$base64Html');", null)
+                                    } 
+                                    else if (fileName.endsWith(".pptx")) {
+                                        val html = convertPptToHtml(bytes.inputStream())
+                                        val base64Html = Base64.encodeToString(html.toByteArray(), Base64.NO_WRAP)
+                                        webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     }
                                 }
                             }
@@ -106,27 +100,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
         }
     }
 
-    // --- AXTARIŞ ---
-    private fun showSearchDialog() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT
-            hint = "Axtarılacaq söz..."
-            setPadding(32, 32, 32, 32)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Sənəddə Axtar")
-            .setView(input)
-            .setPositiveButton("Axtar") { _, _ ->
-                val query = input.text.toString()
-                if (query.isNotEmpty()) {
-                    webView.findAllAsync(query) // Sözü tapır və sarı rənglə işarələyir
-                }
-            }
-            .setNegativeButton("Ləğv et", null)
-            .show()
-    }
-
-    // --- EXCEL-İ HTML-Ə ÇEVİRİRİK ---
     private fun convertExcelToHtml(inputStream: InputStream): String {
         val workbook = XSSFWorkbook(inputStream)
         val formatter = DataFormatter()
@@ -152,7 +125,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
         return html.toString()
     }
 
-    // --- POWERPOINT-İ HTML-Ə ÇEVİRİRİK ---
     private fun convertPptToHtml(inputStream: InputStream): String {
         val slideShow = XMLSlideShow(inputStream)
         val html = StringBuilder("")
@@ -164,9 +136,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
                 if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                     for (paragraph in shape.textParagraphs) {
                         val pText = paragraph.textRuns.joinToString("") { it.rawText ?: "" }
-                        if (pText.isNotBlank()) {
-                            html.append("<p>").append(pText).append("</p>")
-                        }
+                        if (pText.isNotBlank()) { html.append("<p>").append(pText).append("</p>") }
                     }
                 }
             }
@@ -176,14 +146,38 @@ class OfficeViewerActivity : BaseViewerActivity() {
         return html.toString()
     }
 
+    // Sənəddə Axtarış
+    fun showSearchDialog() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            hint = "Axtarılacaq söz..."
+            setPadding(32, 32, 32, 32)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Sənəddə Axtar")
+            .setView(input)
+            .setPositiveButton("Axtar") { _, _ ->
+                val query = input.text.toString()
+                if (query.isNotEmpty()) {
+                    webView.findAllAsync(query)
+                }
+            }
+            .setNegativeButton("Ləğv et", null)
+            .show()
+    }
+
     override fun onThemeToggle() {
-        isDarkMode = !isDarkMode
-        val bg = if(isDarkMode) "#121212" else "#F3F4F6"
-        val paper = if(isDarkMode) "#1E1E1E" else "#FFFFFF"
-        val text = if(isDarkMode) "#E0E0E0" else "#333333"
         webView.evaluateJavascript("""
-            document.body.style.backgroundColor = '$bg';
-            document.querySelectorAll('.paper, .slide, .docx').forEach(el => { el.style.backgroundColor = '$paper'; el.style.color = '$text'; });
+            (function() {
+                var body = document.body;
+                if (body.style.backgroundColor === 'black' || body.style.backgroundColor === 'rgb(0, 0, 0)') {
+                    body.style.backgroundColor = '#F3F4F6';
+                    document.querySelectorAll('.docx, .slide, .paper').forEach(el => { el.style.backgroundColor = 'white'; el.style.color = '#333'; });
+                } else {
+                    body.style.backgroundColor = 'black';
+                    document.querySelectorAll('.docx, .slide, .paper').forEach(el => { el.style.backgroundColor = '#1E1E1E'; el.style.color = 'white'; });
+                }
+            })();
         """.trimIndent(), null)
     }
 
@@ -191,7 +185,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
         if (change == 0) currentFontSize = 16 else currentFontSize += change
         webView.evaluateJavascript("document.body.style.fontSize='${currentFontSize}px';", null)
     }
-
+    
     private fun getFileName(uri: android.net.Uri): String {
         var result: String? = null
         if (uri.scheme == "content") {
