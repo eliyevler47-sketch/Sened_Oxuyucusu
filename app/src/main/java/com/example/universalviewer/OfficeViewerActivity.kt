@@ -5,7 +5,6 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -130,7 +129,7 @@ class OfficeViewerActivity : AppCompatActivity() {
         }
     }
 
-    // POWERPOINT OXUYUCUSU (Rəngləri və Stilləri qoruyur)
+    // POWERPOINT OXUYUCUSU (Rənglər çıxarıldı, amma Qalın və Maili yazılar qalır)
     private fun createPptxView(inputStream: InputStream, container: LinearLayout) {
         val slideShow = XMLSlideShow(inputStream)
         
@@ -167,17 +166,12 @@ class OfficeViewerActivity : AppCompatActivity() {
                             spannableBuilder.append(text)
                             paragraphText += text
 
-                            // Şrift stilləri (Qalın, Maili)
+                            // Şrift stilləri (Qalın, Maili) - Rəng hissəsi SİLİNDİ
                             if (run.isBold) {
                                 spannableBuilder.setSpan(StyleSpan(Typeface.BOLD), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                             }
                             if (run.isItalic) {
                                 spannableBuilder.setSpan(StyleSpan(Typeface.ITALIC), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                            }
-                            // Rəng (Əgər varsa)
-                            val color = run.fontColor
-                            if (color != null) {
-                                spannableBuilder.setSpan(ForegroundColorSpan(color.rgb), start, spannableBuilder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                             }
                         }
                         if (paragraphText.isNotBlank()) {
