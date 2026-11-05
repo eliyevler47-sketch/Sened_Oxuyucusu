@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- JS MÜHƏRRİKİ (Word formatını orijinal çəkmək üçün) -->
+    <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.2.2/dist/docx-preview.min.js"></script>
+    <style>
+        body { background-color: #f3f4f6; padding: 10px; font-family: sans-serif; margin: 0; }
+        .docx-wrapper { background: transparent !important; padding: 0 !important; }
+        .docx { 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; 
+            border-radius: 8px; 
+            margin-bottom: 20px !important;
+            background: white;
+        }
+        #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #1E1B4B; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="loading">Sənəd Yüklənir, gözləyin...</div>
+    <div id="container"></div>
+
+    <script>
+        // Kotlin-dən gələn Base64 məlumatını qəbul edən funksiya
+        function renderDocx(base64Data) {
+            document.getElementById('loading').style.display = 'none';
+            
+            // Base64 kodunu Bayt massivinə (ArrayBuffer) çeviririk
+            var binaryString = atob(base64Data);
+            var len = binaryString.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // JS Mühərrikinə ötürüb ekrana çəkirik
+            docx.renderAsync(bytes.buffer, document.getElementById("container"), null, {
+                className: "docx",
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                ignoreFonts: false,
+                breakPages: true,
+                renderHeaders: true,
+                renderFooters: true
+            }).then(x => console.log("Sənəd uğurla çəkildi!"));
+        }
+    </script>
+</body>
+</html>
