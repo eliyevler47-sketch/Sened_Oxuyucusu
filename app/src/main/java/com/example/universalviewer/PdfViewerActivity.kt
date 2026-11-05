@@ -1,9 +1,12 @@
 package com.example.universalviewer
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.text.InputType
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -13,10 +16,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 
 class PdfViewerActivity : AppCompatActivity() {
-    
-    // Gecə rejimi üçün dəyişən (xəta verən hissəni bununla əvəz etdik)
-    private var isNightMode = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_viewer)
@@ -30,24 +29,19 @@ class PdfViewerActivity : AppCompatActivity() {
 
         val pdfView = PDFView(this, null).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#2C2C2C"))
+            setBackgroundColor(Color.parseColor("#2C2C2C")) // Tünd peşəkar fon
         }
         container.addView(pdfView)
 
+        // Peşəkar Funksiyalar Menyusu
         fabSettings.setOnClickListener {
-            val options = arrayOf("🌙 Gecə Rejimi (Rəngləri Tərs Et)", "ℹ️ Səhifə Məlumatı")
+            val options = arrayOf("🔍 Səhifəyə Keçid", "📤 Sənədi Paylaş")
             AlertDialog.Builder(this)
-                .setTitle("PDF Parametrləri")
+                .setTitle("PDF Alətləri")
                 .setItems(options) { _, which ->
                     when(which) {
-                        0 -> {
-                            isNightMode = !isNightMode
-                            pdfView.setNightMode(isNightMode)
-                            Toast.makeText(this, if(isNightMode) "Gecə rejimi aktivdir" else "Gündüz rejimi", Toast.LENGTH_SHORT).show()
-                        }
-                        1 -> {
-                            Toast.makeText(this, "Ümumi Səhifə: ${pdfView.pageCount}", Toast.LENGTH_LONG).show()
-                        }
+                        0 -> showJumpToPageDialog(pdfView)
+                        1 -> shareFile()
                     }
                 }.show()
         }
@@ -75,6 +69,44 @@ class PdfViewerActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    // Səhifəyə keçid dialoqu
+    private fun showJumpToPageDialog(pdfView: PDFView) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            hint = "Səhifə nömrəsi (1 - ${pdfView.pageCount})"
+            setPadding(32, 32, 32, 32)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Səhifəyə Keçid")
+            .setView(input)
+            .setPositiveButton("Get") { _, _ ->
+                val pageStr = input.text.toString()
+                if (pageStr.isNotEmpty()) {
+                    val page = pageStr.toIntOrNull()
+                    if (page != null && page > 0 && page <= pdfView.pageCount) {
+                        pdfView.jumpTo(page - 1, true) // PDF səhifələri 0-dan başlayır
+                    } else {
+                        Toast.makeText(this, "Yanlış səhifə nömrəsi!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Ləğv et", null)
+            .show()
+    }
+
+    // Paylaşma funksiyası
+    private fun shareFile() {
+        intent.data?.let { uri ->
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Sənədi Paylaş"))
         }
     }
 }
