@@ -2,21 +2,29 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
     android:orientation="vertical"
-    android:padding="32dp">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Universal Viewer"
-        android:textSize="28sp"
-        android:textStyle="bold" />
+    android:padding="16dp"
+    android:background="#F3F4F6">
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnOpenFile"
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:text="📄 Yeni Sənəd Aç" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="Sənəd Seç və Aç" />
+        android:text="Son Açılan Sənədlər"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#1E1B4B" />
+
+    <!-- BURADAKI ID MÜTLƏQ recyclerViewRecent OLMALIDIR -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewRecent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="8dp" />
 </LinearLayout>
