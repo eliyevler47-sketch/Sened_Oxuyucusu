@@ -24,23 +24,41 @@ abstract class BaseViewerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefManager = PreferenceManager(this)
-    }
+        
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        toolbar.inflateMenu(R.menu.viewer_menu)
+        
+        // Menyudaki düymələrin işləməsi
+        toolbar.setOnMenuItemClickListener { item ->
+            when(item.itemId) {
+                R.id.action_search -> { 
+                    // Hər fəaliyyət (Activity) öz axtarış funksiyasını çağırır
+                    if (this is OfficeViewerActivity) this.showSearchDialog()
+                    if (this is PdfViewerActivity) this.showSearchDialog()
+                    true 
+                }
+                R.id.action_open_new -> { 
+                    filePickerLauncher.launch(arrayOf(
+                        "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                        "text/plain", "text/html", "image/*"
+                    ))
+                    true 
+                }
+                else -> false
+            }
+        }
+        
+        toolbar.setNavigationOnClickListener { finish() }
 
-    // Yeni sənəd açmaq funksiyası
-    protected fun openNewFile() {
-        filePickerLauncher.launch(arrayOf(
-            "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "text/plain", "text/html", "image/*"
-        ))
+        val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
+        fab.setOnClickListener { showSettingsDialog() }
     }
 
     override fun onResume() {
         super.onResume()
         startTime = System.currentTimeMillis()
-        val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
-        fab?.setOnClickListener { showSettingsDialog() }
     }
 
     override fun onPause() {
