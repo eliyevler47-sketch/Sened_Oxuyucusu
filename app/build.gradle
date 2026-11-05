@@ -38,8 +38,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     
-    // VERSİYA DƏYİŞDİRİLDİ: 2.8.2 (Xətasız işləyən versiya)
-    implementation 'com.github.barteksc:android-pdf-viewer:2.8.2'
+    // JITPACK-SİZ, TAM STABİL ŞƏKİL ZOOM KİTABXANASI
+    implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     
     // Ofis faylları üçün
     implementation 'org.apache.poi:poi:5.2.3'
