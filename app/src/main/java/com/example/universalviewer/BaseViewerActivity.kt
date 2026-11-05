@@ -23,16 +23,18 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // ÇÖKMƏNİN QARŞISINI ALAN HİSSƏ: Dizaynı burada yükləyirik
+        setContentView(R.layout.activity_viewer) 
+        
         prefManager = PreferenceManager(this)
         
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.inflateMenu(R.menu.viewer_menu)
         
-        // Menyudaki düymələrin işləməsi
         toolbar.setOnMenuItemClickListener { item ->
             when(item.itemId) {
                 R.id.action_search -> { 
-                    // Hər fəaliyyət (Activity) öz axtarış funksiyasını çağırır
                     if (this is OfficeViewerActivity) this.showSearchDialog()
                     if (this is PdfViewerActivity) this.showSearchDialog()
                     true 
@@ -49,7 +51,6 @@ abstract class BaseViewerActivity : AppCompatActivity() {
                 else -> false
             }
         }
-        
         toolbar.setNavigationOnClickListener { finish() }
 
         val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
