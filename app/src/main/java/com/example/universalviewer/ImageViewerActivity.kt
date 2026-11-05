@@ -18,9 +18,17 @@ class ImageViewerActivity : AppCompatActivity() {
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Şəkil"
         toolbar.setNavigationOnClickListener { finish() }
 
-        val photoView = PhotoView(this)
+        val photoView = PhotoView(this).apply {
+            // BÜTÜN EKRANI TUTMASI ÜÇÜN BU ƏMR VACİBDİR
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
+        }
         container.addView(photoView)
 
-        intent.data?.let { uri: Uri -> photoView.setImageURI(uri) }
+        intent.data?.let { uri: Uri -> 
+            photoView.setImageURI(uri) 
+        }
     }
 }
