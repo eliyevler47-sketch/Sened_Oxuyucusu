@@ -1,14 +1,17 @@
 package com.example.universalviewer
 
+import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -19,17 +22,22 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.InputStream
 
 class OfficeViewerActivity : AppCompatActivity() {
+    
+    private var isDarkMode = false
+    private var currentFontSize = 16 // Default şrift ölçüsü
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_viewer)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         val container = findViewById<LinearLayout>(R.id.contentContainer)
+        val fabSettings = findViewById<FloatingActionButton>(R.id.fabSettings)
 
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Ofis Sənədi"
         toolbar.setNavigationOnClickListener { finish() }
 
-        // Kasma olmasın deyə əvvəlcə Yükləmə (Loading) ekranı
+        // Yükləmə animasiyası
         val progressBar = ProgressBar(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, 
@@ -41,10 +49,48 @@ class OfficeViewerActivity : AppCompatActivity() {
 
         val webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#F8F9FA")) // Təmiz ağ-boz fon
+            setBackgroundColor(Color.parseColor("#F8F9FA"))
             settings.javaScriptEnabled = true
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
+        }
+
+        // Seçimlər Menyusu (Gecə rejimi, Şrift ölçüsü)
+        fabSettings.setOnClickListener {
+            val options = arrayOf("🌙 Gecə Rejimi (Yandır/Söndür)", "🔤 Şrifti Böyüt", "🔤 Şrifti Kiçilt", "📤 Paylaş")
+            AlertDialog.Builder(this)
+                .setTitle("Sənəd Parametrləri")
+                .setItems(options) { _, which ->
+                    when(which) {
+                        0 -> {
+                            isDarkMode = !isDarkMode
+                            val bgColor = if(isDarkMode) "#121212" else "#F8F9FA"
+                            val paperColor = if(isDarkMode) "#1E1E1E" else "#FFFFFF"
+                            val textColor = if(isDarkMode) "#E0E0E0" else "#2C3E50"
+                            webView.evaluateJavascript("document.body.style.backgroundColor='$bgColor'; document.querySelectorAll('.paper, .slide').forEach(el => {el.style.backgroundColor='$paperColor'; el.style.color='$textColor';});", null)
+                            Toast.makeText(this, if(isDarkMode) "Gecə rejimi aktivdir" else "Gündüz rejimi aktivdir", Toast.LENGTH_SHORT).show()
+                        }
+                        1 -> {
+                            currentFontSize += 2
+                            webView.evaluateJavascript("document.body.style.fontSize='${currentFontSize}px'; document.querySelectorAll('p, td, th').forEach(el => el.style.fontSize='${currentFontSize}px');", null)
+                        }
+                        2 -> {
+                            if(currentFontSize > 10) {
+                                currentFontSize -= 2
+                                webView.evaluateJavascript("document.body.style.fontSize='${currentFontSize}px'; document.querySelectorAll('p, td, th').forEach(el => el.style.fontSize='${currentFontSize}px');", null)
+                            }
+                        }
+                        3 -> {
+                            // Paylaşma funksiyası (Intent)
+                            val sendIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                putExtra(android.content.Intent.EXTRA_TEXT, "Universal Viewer ilə açıldı: ${intent.data}")
+                                type = "text/plain"
+                            }
+                            startActivity(android.content.Intent.createChooser(sendIntent, "Paylaş"))
+                        }
+                    }
+                }.show()
         }
 
         val uri = intent.data
@@ -57,18 +103,10 @@ class OfficeViewerActivity : AppCompatActivity() {
                         var htmlContent = ""
 
                         when {
-                            fileName.endsWith(".docx", true) -> {
-                                htmlContent = convertWordToHtml(inputStream)
-                            }
-                            fileName.endsWith(".xlsx", true) -> {
-                                htmlContent = convertExcelToHtml(inputStream)
-                            }
-                            fileName.endsWith(".pptx", true) -> {
-                                htmlContent = convertPptToHtml(inputStream)
-                            }
-                            else -> {
-                                htmlContent = "<h3 style='text-align:center; color:red;'>Bu fayl dəstəklənmir.</h3>"
-                            }
+                            fileName.endsWith(".docx", true) -> htmlContent = convertWordToHtml(inputStream)
+                            fileName.endsWith(".xlsx", true) -> htmlContent = convertExcelToHtml(inputStream)
+                            fileName.endsWith(".pptx", true) -> htmlContent = convertPptToHtml(inputStream)
+                            else -> htmlContent = "<h3 style='text-align:center; color:red;'>Bu fayl dəstəklənmir.</h3>"
                         }
 
                         withContext(Dispatchers.Main) {
@@ -88,31 +126,46 @@ class OfficeViewerActivity : AppCompatActivity() {
         }
     }
 
-    // --- WORD-Ü HTML-Ə ÇEVİRİRİK (Premium Dizayn) ---
+    // --- WORD-Ü HTML-Ə ÇEVİRİRİK (Cədvəl və Qalın yazılar dəstəklənir) ---
     private fun convertWordToHtml(inputStream: InputStream): String {
         val document = XWPFDocument(inputStream)
         val html = StringBuilder("""
             <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background-color: #F8F9FA; }
-                .paper { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); line-height: 1.8; font-size: 16px; color: #2C3E50; }
-                p { margin-bottom: 15px; }
+                body { font-family: 'Segoe UI', sans-serif; padding: 15px; background-color: #F8F9FA; transition: background-color 0.3s; }
+                .paper { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); line-height: 1.8; color: #2C3E50; transition: background-color 0.3s, color 0.3s; }
+                p { margin-bottom: 12px; font-size: 16px;}
+                table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+                td, th { border: 1px solid #ddd; padding: 10px; font-size: 15px; }
             </style></head><body><div class="paper">
         """.trimIndent())
         
+        // Paraqrafları oxuyuruq
         for (paragraph in document.paragraphs) {
             if (paragraph.text.isNotBlank()) {
-                // Word-dəki boşluqları və sətirləri qoruyuruq
-                val safeText = paragraph.text.replace("\n", "<br>")
-                html.append("<p>").append(safeText).append("</p>")
+                html.append("<p>").append(paragraph.text).append("</p>")
             }
         }
+
+        // Cədvəlləri oxuyuruq (Word-də cədvəl varsa)
+        for (table in document.tables) {
+            html.append("<table>")
+            for (row in table.rows) {
+                html.append("<tr>")
+                for (cell in row.tableCells) {
+                    html.append("<td>").append(cell.text).append("</td>")
+                }
+                html.append("</tr>")
+            }
+            html.append("</table>")
+        }
+
         html.append("</div></body></html>")
         document.close()
         return html.toString()
     }
 
-    // --- EXCEL-İ HTML CƏDVƏLİNƏ ÇEVİRİRİK (Müasir Cədvəl) ---
+    // --- EXCEL-İ HTML CƏDVƏLİNƏ ÇEVİRİRİK ---
     private fun convertExcelToHtml(inputStream: InputStream): String {
         val workbook = XSSFWorkbook(inputStream)
         val formatter = DataFormatter()
@@ -120,12 +173,12 @@ class OfficeViewerActivity : AppCompatActivity() {
         val html = StringBuilder("""
             <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body { font-family: 'Segoe UI', sans-serif; padding: 15px; background-color: #F8F9FA; }
-                .paper { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); overflow-x: auto; margin-bottom: 20px;}
+                body { font-family: 'Segoe UI', sans-serif; padding: 15px; background-color: #F8F9FA; transition: background-color 0.3s; }
+                .paper { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; transition: background-color 0.3s; }
                 h3 { color: #1E1B4B; font-size: 18px; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px;}
-                table { border-collapse: collapse; width: 100%; margin-bottom: 10px; font-size: 14px; }
-                th, td { border: 1px solid #E2E8F0; padding: 12px; text-align: left; white-space: nowrap; }
-                th { background: #F1F5F9; font-weight: bold; color: #1E293B; }
+                table { border-collapse: collapse; width: 100%; font-size: 14px; }
+                th, td { border: 1px solid #E2E8F0; padding: 10px; text-align: left; white-space: nowrap; }
+                th { background: #F1F5F9; font-weight: bold; }
                 tr:nth-child(even) { background: #F8FAFC; }
             </style></head><body>
         """.trimIndent())
@@ -139,11 +192,7 @@ class OfficeViewerActivity : AppCompatActivity() {
                 html.append("<tr>")
                 for (cell in row) {
                     val cellValue = formatter.formatCellValue(cell, evaluator)
-                    if (rowIndex == 0) {
-                        html.append("<th>$cellValue</th>")
-                    } else {
-                        html.append("<td>$cellValue</td>")
-                    }
+                    if (rowIndex == 0) html.append("<th>$cellValue</th>") else html.append("<td>$cellValue</td>")
                 }
                 html.append("</tr>")
             }
@@ -154,19 +203,19 @@ class OfficeViewerActivity : AppCompatActivity() {
         return html.toString()
     }
 
-    // --- POWERPOINT-İ HTML SLAYD KARTLARINA ÇEVİRİRİK (Rəng və Ölçü Dəstəyi) ---
+    // --- POWERPOINT-İ HTML SLAYD KARTLARINA ÇEVİRİRİK ---
     private fun convertPptToHtml(inputStream: InputStream): String {
         val slideShow = XMLSlideShow(inputStream)
         val html = StringBuilder("""
             <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body { font-family: 'Segoe UI', sans-serif; padding: 15px; background-color: #F8F9FA; }
-                .slide { background: white; padding: 30px; margin-bottom: 25px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); position: relative; }
+                body { font-family: 'Segoe UI', sans-serif; padding: 15px; background-color: #F8F9FA; transition: background-color 0.3s; }
+                .slide { background: white; padding: 25px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: background-color 0.3s; }
                 .slide-number { position: absolute; top: 15px; right: 20px; color: #94A3B8; font-size: 12px; font-weight: bold; }
-                .title { color: #1E1B4B; font-size: 22px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid #F1F5F9; padding-bottom: 10px;}
+                .title { color: #1E1B4B; font-size: 20px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid #F1F5F9; padding-bottom: 10px; line-height: 1.3;}
                 .content p { font-size: 16px; color: #334155; line-height: 1.6; margin-bottom: 10px; }
-                .bullet { display: flex; margin-bottom: 8px; }
-                .bullet-dot { margin-right: 10px; color: #3B82F6; }
+                .bullet { display: flex; margin-bottom: 10px; }
+                .bullet-dot { margin-right: 10px; color: #3B82F6; font-weight: bold; }
             </style></head><body>
         """.trimIndent())
         
@@ -181,14 +230,11 @@ class OfficeViewerActivity : AppCompatActivity() {
                 if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                     for (paragraph in shape.textParagraphs) {
                         val pText = paragraph.textRuns.joinToString("") { it.rawText ?: "" }
-                        
                         if (pText.isNotBlank()) {
                             if (isFirstShape) {
-                                // İlk yazı adətən slaydın başlığı olur
                                 html.append("<div class='title'>").append(pText).append("</div>")
                                 isFirstShape = false
                             } else {
-                                // Qalan yazılar bəndlər (bullet) kimi göstərilir
                                 html.append("<div class='bullet'><span class='bullet-dot'>•</span><p>").append(pText).append("</p></div>")
                             }
                         }
@@ -211,9 +257,7 @@ class OfficeViewerActivity : AppCompatActivity() {
                     val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     if (index != -1) result = cursor.getString(index)
                 }
-            } finally {
-                cursor?.close()
-            }
+            } finally { cursor?.close() }
         }
         return result ?: uri.path?.substringAfterLast('/') ?: ""
     }
