@@ -20,8 +20,8 @@ class PdfViewerActivity : AppCompatActivity() {
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
         toolbar.setNavigationOnClickListener { finish() }
 
-        // PDF Mühərrikini yaradırıq
-        val pdfView = PDFView(this).apply {
+        // DÜZƏLİŞ: PDFView(this, null) edildi
+        val pdfView = PDFView(this, null).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.parseColor("#2C2C2C")) // Tünd peşəkar fon
         }
@@ -30,24 +30,22 @@ class PdfViewerActivity : AppCompatActivity() {
         val uri = intent.data
         if (uri != null) {
             try {
-                // Faylı yaddaşa kopyalayırıq
                 val file = File(cacheDir, "temp_view.pdf")
                 contentResolver.openInputStream(uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
 
-                // Səhifələri yükləyirik (Zoom, Sürüşdürmə tam bütövdür)
                 pdfView.fromFile(file)
                     .enableSwipe(true)
                     .swipeHorizontal(false)
-                    .enableDoubletap(true) // İki barmaqla zoom
+                    .enableDoubletap(true)
                     .defaultPage(0)
                     .enableAnnotationRendering(false)
                     .password(null)
                     .scrollHandle(null)
-                    .enableAntialiasing(true) // Kənarları hamarlaşdırır
-                    .spacing(24) // Səhifələr arası boşluq
-                    .pageSnap(true) // Səhifələrə yapışma
+                    .enableAntialiasing(true)
+                    .spacing(24)
+                    .pageSnap(true)
                     .load()
             } catch (e: Exception) {
                 e.printStackTrace()
