@@ -30,7 +30,7 @@ class OfficeViewerActivity : AppCompatActivity() {
 
         val webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#F3F4F6"))
+            setBackgroundColor(Color.parseColor("#F3F4F6")) // Açıq boz fon
             settings.javaScriptEnabled = true
         }
         container.addView(webView)
@@ -55,7 +55,7 @@ class OfficeViewerActivity : AppCompatActivity() {
                                 htmlContent = convertPptToHtml(inputStream)
                             }
                             else -> {
-                                htmlContent = "<h3>Bu fayl dəstəklənmir.</h3>"
+                                htmlContent = "<h3 style='text-align:center; margin-top:50px; font-family:sans-serif;'>Bu fayl dəstəklənmir.</h3>"
                             }
                         }
 
@@ -65,7 +65,7 @@ class OfficeViewerActivity : AppCompatActivity() {
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        webView.loadData("<h3 style='color:red;'>Xəta: ${e.message}</h3>", "text/html", "UTF-8")
+                        webView.loadData("<h3 style='color:red; font-family:sans-serif;'>Xəta: ${e.message}</h3>", "text/html", "UTF-8")
                     }
                 }
             }
@@ -75,7 +75,7 @@ class OfficeViewerActivity : AppCompatActivity() {
     // --- WORD-Ü HTML-Ə ÇEVİRİRİK ---
     private fun convertWordToHtml(inputStream: InputStream): String {
         val document = XWPFDocument(inputStream)
-        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:20px; line-height:1.6;} .paper{background:white; padding:40px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);}</style></head><body><div class='paper'>")
+        val html = StringBuilder("<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><style>body{font-family:sans-serif; padding:15px; background-color:#f3f4f6;} .paper{background:white; padding:30px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1); line-height:1.6; font-size:16px; color:#333;}</style></head><body><div class='paper'>")
         
         for (paragraph in document.paragraphs) {
             if (paragraph.text.isNotBlank()) {
@@ -92,41 +92,48 @@ class OfficeViewerActivity : AppCompatActivity() {
         val workbook = XSSFWorkbook(inputStream)
         val formatter = DataFormatter()
         val evaluator = workbook.creationHelper.createFormulaEvaluator()
-        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:20px;} .paper{background:white; padding:20px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1); overflow-x:auto;} table{border-collapse:collapse; width:100%;} th,td{border:1px solid #ccc; padding:8px; text-align:left;} th{background:#f4f4f4;}</style></head><body><div class='paper'>")
+        val html = StringBuilder("<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><style>body{font-family:sans-serif; padding:15px; background-color:#f3f4f6;} .paper{background:white; padding:15px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1); overflow-x:auto;} h3{color:#1E1B4B;} table{border-collapse:collapse; width:100%; margin-bottom:20px;} th,td{border:1px solid #ddd; padding:10px; text-align:left; white-space:nowrap;} th{background:#f4f4f4; font-weight:bold; color:#333;}</style></head><body><div class='paper'>")
 
         for (sheetIndex in 0 until workbook.numberOfSheets) {
             val sheet = workbook.getSheetAt(sheetIndex)
-            html.append("<h3>Vərəq: ${sheet.sheetName}</h3>")
+            html.append("<h3>📌 Vərəq: ${sheet.sheetName}</h3>")
             html.append("<table>")
             for ((rowIndex, row) in sheet.withIndex()) {
                 html.append("<tr>")
                 for (cell in row) {
-                    val valStr = formatter.formatCellValue(cell, evaluator)
-                    if (rowIndex == 0) html.append("<th>$valStr</th>") else html.append("<td>$valStr</td>")
+                    val cellValue = formatter.formatCellValue(cell, evaluator)
+                    if (rowIndex == 0) {
+                        html.append("<th>$cellValue</th>")
+                    } else {
+                        html.append("<td>$cellValue</td>")
+                    }
                 }
                 html.append("</tr>")
             }
-            html.append("</table><br><br>")
+            html.append("</table>")
         }
         html.append("</div></body></html>")
         workbook.close()
         return html.toString()
     }
 
-    // --- POWERPOINT-İ HTML SLAYD KARTLARINA ÇEVİRİRİK ---
+    // --- POWERPOINT-İ HTML SLAYD KARTLARINA ÇEVİRİRİK (XƏTA BURADA HƏLL EDİLDİ) ---
     private fun convertPptToHtml(inputStream: InputStream): String {
         val slideShow = XMLSlideShow(inputStream)
-        val html = StringBuilder("<html><head><style>body{font-family:sans-serif; padding:15px; background:#f3f4f6;} .slide{background:white; padding:30px; margin-bottom:25px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);} .title{color:#1E1B4B; font-size:14px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:20px;} .content{font-size:16px; color:#333; line-height:1.6;}</style></head><body>")
+        val html = StringBuilder("<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><style>body{font-family:sans-serif; padding:15px; background-color:#f3f4f6;} .slide{background:white; padding:30px; margin-bottom:25px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.1);} .slide-number{color:#888; font-size:12px; font-weight:bold; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;} .content p{font-size:16px; color:#333; line-height:1.6; margin-bottom:10px;}</style></head><body>")
         
         for ((index, slide) in slideShow.slides.withIndex()) {
             html.append("<div class='slide'>")
-            html.append("<div class='title'>Slayd ${index + 1}</div>")
+            html.append("<div class='slide-number'>Slayd ${index + 1}</div>")
             html.append("<div class='content'>")
+            
             for (shape in slide.shapes) {
                 if (shape is org.apache.poi.sl.usermodel.TextShape<*, *>) {
                     for (paragraph in shape.textParagraphs) {
-                        if (paragraph.text.isNotBlank()) {
-                            html.append("<p>").append(paragraph.text).append("</p>")
+                        // ULTRA-PROFESSIONAL HƏLL: paragraph.text YOX, textRuns vasitəsilə oxuyuruq
+                        val pText = paragraph.textRuns.joinToString("") { it.rawText ?: "" }
+                        if (pText.isNotBlank()) {
+                            html.append("<p>").append(pText).append("</p>")
                         }
                     }
                 }
