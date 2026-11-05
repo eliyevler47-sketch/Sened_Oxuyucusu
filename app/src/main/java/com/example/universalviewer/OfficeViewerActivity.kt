@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,11 +28,10 @@ class OfficeViewerActivity : BaseViewerActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_viewer)
+        // setContentView(R.layout.activity_viewer) SİLİNDİ
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Sənəd"
-        toolbar.setNavigationOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.contentContainer)
         val progressBar = ProgressBar(this).apply {
@@ -57,8 +55,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = getFileName(uri).lowercase()
-                        
-                        // Faylı oxuyuruq
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
@@ -146,7 +142,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
         return html.toString()
     }
 
-    // Sənəddə Axtarış
     fun showSearchDialog() {
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_TEXT
@@ -158,9 +153,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
             .setView(input)
             .setPositiveButton("Axtar") { _, _ ->
                 val query = input.text.toString()
-                if (query.isNotEmpty()) {
-                    webView.findAllAsync(query)
-                }
+                if (query.isNotEmpty()) { webView.findAllAsync(query) }
             }
             .setNegativeButton("Ləğv et", null)
             .show()
