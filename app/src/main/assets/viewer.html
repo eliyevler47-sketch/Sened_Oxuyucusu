@@ -3,57 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- YERLİ (OFFLINE) KİTABXANALAR -->
     <script src="jszip.min.js"></script>
     <script src="docx-preview.min.js"></script>
     <style>
-        body { background-color: #f3f4f6; padding: 10px; font-family: sans-serif; margin: 0; }
+        body { background-color: #f3f4f6; padding: 10px; font-family: 'Segoe UI', sans-serif; margin: 0; }
         .docx-wrapper { background: transparent !important; padding: 0 !important; }
         .docx { box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; border-radius: 8px; margin-bottom: 20px !important; background: white; }
-        #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #1E1B4B; font-weight: bold; }
         
-        /* SAĞ TƏRƏFDƏ ŞAQUİ SÜRÜŞDÜRMƏ ÇUBUĞU */
+        /* EXCEL VƏ PPTX ÜÇÜN DİZAYN */
+        .paper { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-x: auto; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }
+        th, td { border: 1px solid #E2E8F0; padding: 10px; text-align: left; }
+        th { background: #F1F5F9; font-weight: bold; color: #1E293B; }
+        tr:nth-child(even) { background: #F8FAFC; }
+        .slide { background: white; padding: 30px; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .slide-title { color: #1E1B4B; font-size: 22px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid #F1F5F9; padding-bottom: 10px;}
+        .slide-content p { font-size: 16px; color: #334155; line-height: 1.6; margin-bottom: 10px; }
+
+        /* SAĞDAKİ SÜRÜŞDÜRMƏ ÇUBUĞU */
         #scrollIndicator {
-            position: fixed; right: 5px; top: 10%; height: 80%; width: 6px;
+            position: fixed; right: 2px; top: 10%; height: 80%; width: 6px;
             background: rgba(0,0,0,0.1); border-radius: 3px; z-index: 1000;
         }
         #scrollThumb {
             position: absolute; width: 100%; background: #1E1B4B; border-radius: 3px;
-            top: 0; height: 20%;
+            top: 0; height: 10%; transition: top 0.1s ease;
         }
         /* SƏHİFƏ VƏ MİQYAS GÖSTƏRİCİSİ */
         #pageInfo {
-            position: fixed; right: 15px; bottom: 20px; background: rgba(30,27,75,0.9);
-            color: white; padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 1000;
+            position: fixed; right: 12px; bottom: 12px; background: rgba(30,27,75,0.9);
+            color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 1000;
         }
+        #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #1E1B4B; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="loading">Sənəd Yüklənir...</div>
     <div id="container"></div>
-    
-    <!-- Sürüşdürmə çubuğu və səhifə məlumatı -->
     <div id="scrollIndicator"><div id="scrollThumb"></div></div>
     <div id="pageInfo">Səhifə: 1 / 1</div>
 
     <script>
-        // Sürüşdürmə çubuğunu yeniləyən funksiya
+        // SÜRÜŞDÜRMƏ ÇUBUĞUNU İZLƏYƏN FUNKSİYA
         window.onscroll = function() {
             var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
             var scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            var scrollPercent = (scrollTop / scrollHeight) * 100;
+            var scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
             
-            // Thumb-u hərəkət etdir
             var thumb = document.getElementById("scrollThumb");
             thumb.style.top = scrollPercent + "%";
             thumb.style.height = Math.max(10, 100 - scrollPercent) + "%";
             
-            // Səhifə nömrəsini yenilə (təxmini)
-            var totalPages = document.querySelectorAll('.docx').length || 1;
+            // Səhifə nömrəsini hesabla
+            var totalPages = document.querySelectorAll('.docx, .slide, .paper').length || 1;
             var currentPage = Math.ceil((scrollPercent / 100) * totalPages) || 1;
+            if(currentPage > totalPages) currentPage = totalPages;
+            if(currentPage < 1) currentPage = 1;
+            
             document.getElementById("pageInfo").innerText = "Səhifə: " + currentPage + " / " + totalPages;
         };
 
+        // WORD ÜÇÜN
         function renderDocx(base64Data) {
             document.getElementById('loading').style.display = 'none';
             var binaryString = atob(base64Data);
@@ -65,11 +75,14 @@
             docx.renderAsync(bytes.buffer, document.getElementById("container"), null, {
                 className: "docx", inWrapper: true, ignoreWidth: false, ignoreHeight: false,
                 ignoreFonts: false, breakPages: true, renderHeaders: true, renderFooters: true
-            }).then(() => {
-                // Səhifə sayını yenilə
-                var totalPages = document.querySelectorAll('.docx').length;
-                document.getElementById("pageInfo").innerText = "Səhifə: 1 / " + totalPages;
-            });
+            }).then(() => { window.onscroll(); });
+        }
+
+        // EXCEL VƏ PPTX ÜÇÜN HTML YÜKLƏMƏSİ
+        function renderHtml(htmlString) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById("container").innerHTML = htmlString;
+            setTimeout(() => { window.onscroll(); }, 100);
         }
     </script>
 </body>
