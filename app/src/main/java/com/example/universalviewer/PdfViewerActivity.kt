@@ -1,6 +1,5 @@
 package com.example.universalviewer
 
-import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.ViewGroup
@@ -12,17 +11,17 @@ import java.io.File
 
 class PdfViewerActivity : BaseViewerActivity() {
     private lateinit var pdfView: PDFView
-    private var isNightMode = false // Xəta verən isNightModeActive yerinə
+    private var isNightMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_viewer)
+        // setContentView(R.layout.activity_viewer) SİLİNDİ, çünki BaseViewer-də var
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
-        toolbar.setNavigationOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.contentContainer)
+        
         pdfView = PDFView(this, null).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.parseColor("#2C2C2C"))
@@ -42,16 +41,17 @@ class PdfViewerActivity : BaseViewerActivity() {
                     .defaultPage(0).enableAnnotationRendering(false).password(null)
                     .scrollHandle(null).enableAntialiasing(true).spacing(24).pageSnap(true)
                     .load()
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (e: Exception) { 
+                e.printStackTrace() 
+                Toast.makeText(this, "PDF açılarkən xəta baş verdi.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    // PDF Axtarışı (Barteksc-də mətn axtarışı olmadığı üçün sadəcə məlumat veririk)
     fun showSearchDialog() {
-        Toast.makeText(this, "PDF daxilində mətn axtarışı hazırda dəstəklənmir. Zəhmət olmasa Word/Excel fayllarında yoxlayın.", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "PDF daxilində axtarış hazırda dəstəklənmir.", Toast.LENGTH_LONG).show()
     }
 
-    // PDF üçün Gecə Rejimi (Xəta verən hissə düzəldildi)
     override fun onThemeToggle() {
         isNightMode = !isNightMode
         pdfView.setNightMode(isNightMode)
