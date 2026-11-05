@@ -13,6 +13,10 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 
 class PdfViewerActivity : AppCompatActivity() {
+    
+    // Gecə rejimi üçün dəyişən (xəta verən hissəni bununla əvəz etdik)
+    private var isNightMode = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_viewer)
@@ -37,14 +41,9 @@ class PdfViewerActivity : AppCompatActivity() {
                 .setItems(options) { _, which ->
                     when(which) {
                         0 -> {
-                            // PDF-in rənglərini tərsinə çeviririk
-                            if (pdfView.isNightModeActive) {
-                                pdfView.setNightMode(false)
-                                Toast.makeText(this, "Gündüz rejimi", Toast.LENGTH_SHORT).show()
-                            } else {
-                                pdfView.setNightMode(true)
-                                Toast.makeText(this, "Gecə rejimi aktivdir", Toast.LENGTH_SHORT).show()
-                            }
+                            isNightMode = !isNightMode
+                            pdfView.setNightMode(isNightMode)
+                            Toast.makeText(this, if(isNightMode) "Gecə rejimi aktivdir" else "Gündüz rejimi", Toast.LENGTH_SHORT).show()
                         }
                         1 -> {
                             Toast.makeText(this, "Ümumi Səhifə: ${pdfView.pageCount}", Toast.LENGTH_LONG).show()
