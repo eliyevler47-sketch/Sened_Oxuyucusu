@@ -1,50 +1,43 @@
 package com.example.universalviewer
 
 import android.app.AlertDialog
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.text.InputType
+import android.view.MenuItem
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import com.github.barteksc.pdfviewer.PDFView
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 
-class PdfViewerActivity : AppCompatActivity() {
+class PdfViewerActivity : BaseViewerActivity() {
+    private lateinit var pdfView: PDFView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_viewer)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
-        val container = findViewById<LinearLayout>(R.id.contentContainer)
-        val fabSettings = findViewById<FloatingActionButton>(R.id.fabSettings)
-        
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
+        
+        toolbar.inflateMenu(R.menu.viewer_menu)
+        toolbar.setOnMenuItemClickListener { item ->
+            when(item.itemId) {
+                R.id.action_search -> { showSearchDialog(); true }
+                R.id.action_open_new -> { openNewFile(); true }
+                else -> false
+            }
+        }
         toolbar.setNavigationOnClickListener { finish() }
 
-        val pdfView = PDFView(this, null).apply {
+        val container = findViewById<LinearLayout>(R.id.contentContainer)
+        pdfView = PDFView(this, null).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#2C2C2C")) // Tünd peşəkar fon
+            setBackgroundColor(Color.parseColor("#2C2C2C"))
         }
         container.addView(pdfView)
-
-        // Peşəkar Funksiyalar Menyusu
-        fabSettings.setOnClickListener {
-            val options = arrayOf("🔍 Səhifəyə Keçid", "📤 Sənədi Paylaş")
-            AlertDialog.Builder(this)
-                .setTitle("PDF Alətləri")
-                .setItems(options) { _, which ->
-                    when(which) {
-                        0 -> showJumpToPageDialog(pdfView)
-                        1 -> shareFile()
-                    }
-                }.show()
-        }
 
         val uri = intent.data
         if (uri != null) {
@@ -53,60 +46,43 @@ class PdfViewerActivity : AppCompatActivity() {
                 contentResolver.openInputStream(uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
-
                 pdfView.fromFile(file)
-                    .enableSwipe(true)
-                    .swipeHorizontal(false)
-                    .enableDoubletap(true)
-                    .defaultPage(0)
-                    .enableAnnotationRendering(false)
-                    .password(null)
-                    .scrollHandle(null)
-                    .enableAntialiasing(true)
-                    .spacing(24)
-                    .pageSnap(true)
+                    .enableSwipe(true).swipeHorizontal(false).enableDoubletap(true)
+                    .defaultPage(0).enableAnnotationRendering(false).password(null)
+                    .scrollHandle(null).enableAntialiasing(true).spacing(24).pageSnap(true)
                     .load()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
-    // Səhifəyə keçid dialoqu
-    private fun showJumpToPageDialog(pdfView: PDFView) {
+    // PDF daxilində söz axtarışı (Barteksc kitabxanasının daxili metodu)
+    private fun showSearchDialog() {
         val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            hint = "Səhifə nömrəsi (1 - ${pdfView.pageCount})"
+            inputType = InputType.TYPE_CLASS_TEXT
+            hint = "Axtarılacaq söz..."
             setPadding(32, 32, 32, 32)
         }
-
         AlertDialog.Builder(this)
-            .setTitle("Səhifəyə Keçid")
+            .setTitle("PDF-də Axtar")
             .setView(input)
-            .setPositiveButton("Get") { _, _ ->
-                val pageStr = input.text.toString()
-                if (pageStr.isNotEmpty()) {
-                    val page = pageStr.toIntOrNull()
-                    if (page != null && page > 0 && page <= pdfView.pageCount) {
-                        pdfView.jumpTo(page - 1, true) // PDF səhifələri 0-dan başlayır
-                    } else {
-                        Toast.makeText(this, "Yanlış səhifə nömrəsi!", Toast.LENGTH_SHORT).show()
-                    }
+            .setPositiveButton("Axtar") { _, _ ->
+                val query = input.text.toString()
+                if (query.isNotEmpty()) {
+                    pdfView.search(query)
                 }
             }
             .setNegativeButton("Ləğv et", null)
             .show()
     }
 
-    // Paylaşma funksiyası
-    private fun shareFile() {
-        intent.data?.let { uri ->
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(shareIntent, "Sənədi Paylaş"))
+    override fun onThemeToggle() {
+        if (pdfView.isNightModeActive) pdfView.setNightMode(false) else pdfView.setNightMode(true)
+    }
+
+    override fun onFontSizeChange(change: Int) {
+        if (change == 0) pdfView.zoomTo(1f) else {
+            val currentZoom = pdfView.zoom
+            pdfView.zoomTo(currentZoom + (change * 0.1f))
         }
     }
 }
