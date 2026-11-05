@@ -3,17 +3,16 @@ package com.example.universalviewer
 import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
-import android.text.InputType
-import android.view.MenuItem
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.Toast
 import com.github.barteksc.pdfviewer.PDFView
 import com.google.android.material.appbar.MaterialToolbar
 import java.io.File
 
 class PdfViewerActivity : BaseViewerActivity() {
     private lateinit var pdfView: PDFView
+    private var isNightMode = false // Xəta verən isNightModeActive yerinə
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,15 +20,6 @@ class PdfViewerActivity : BaseViewerActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
-        
-        toolbar.inflateMenu(R.menu.viewer_menu)
-        toolbar.setOnMenuItemClickListener { item ->
-            when(item.itemId) {
-                R.id.action_search -> { showSearchDialog(); true }
-                R.id.action_open_new -> { openNewFile(); true }
-                else -> false
-            }
-        }
         toolbar.setNavigationOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.contentContainer)
@@ -46,6 +36,7 @@ class PdfViewerActivity : BaseViewerActivity() {
                 contentResolver.openInputStream(uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
+
                 pdfView.fromFile(file)
                     .enableSwipe(true).swipeHorizontal(false).enableDoubletap(true)
                     .defaultPage(0).enableAnnotationRendering(false).password(null)
@@ -55,28 +46,15 @@ class PdfViewerActivity : BaseViewerActivity() {
         }
     }
 
-    // PDF daxilində söz axtarışı (Barteksc kitabxanasının daxili metodu)
-    private fun showSearchDialog() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT
-            hint = "Axtarılacaq söz..."
-            setPadding(32, 32, 32, 32)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("PDF-də Axtar")
-            .setView(input)
-            .setPositiveButton("Axtar") { _, _ ->
-                val query = input.text.toString()
-                if (query.isNotEmpty()) {
-                    pdfView.search(query)
-                }
-            }
-            .setNegativeButton("Ləğv et", null)
-            .show()
+    // PDF Axtarışı (Barteksc-də mətn axtarışı olmadığı üçün sadəcə məlumat veririk)
+    fun showSearchDialog() {
+        Toast.makeText(this, "PDF daxilində mətn axtarışı hazırda dəstəklənmir. Zəhmət olmasa Word/Excel fayllarında yoxlayın.", Toast.LENGTH_LONG).show()
     }
 
+    // PDF üçün Gecə Rejimi (Xəta verən hissə düzəldildi)
     override fun onThemeToggle() {
-        if (pdfView.isNightModeActive) pdfView.setNightMode(false) else pdfView.setNightMode(true)
+        isNightMode = !isNightMode
+        pdfView.setNightMode(isNightMode)
     }
 
     override fun onFontSizeChange(change: Int) {
