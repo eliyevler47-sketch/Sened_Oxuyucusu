@@ -25,8 +25,6 @@ object DocumentRouter {
 
     fun routeFile(context: Context, uri: Uri) {
         val fileName = getFileName(context, uri)
-        
-        // Yaddaşa yazırıq
         val prefManager = PreferenceManager(context)
         prefManager.saveRecentFile(uri, fileName)
 
