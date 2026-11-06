@@ -3,11 +3,15 @@ package com.example.universalviewer
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -15,6 +19,7 @@ import com.google.android.material.button.MaterialButton
 class MainActivity : AppCompatActivity() {
     private lateinit var prefManager: PreferenceManager
     private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: DocumentAdapter
 
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -42,72 +47,90 @@ class MainActivity : AppCompatActivity() {
                 "text/plain", "text/html", "image/*"
             ))
         }
+
+        setupRecyclerView()
+    }
+
+    override fun onResume() {
+        super.onResume()
         loadRecentFiles()
     }
 
-    private fun loadRecentFiles() {
-        val recentUris = prefManager.getRecentFiles()
+    private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = RecentAdapter(recentUris) { uriString ->
-            routeFile(Uri.parse(uriString))
+        adapter = DocumentAdapter(emptyList()) { action, item ->
+            when(action) {
+                "CLICK" -> routeFile(Uri.parse(item.uri))
+                "PIN" -> { prefManager.togglePin(item.uri); loadRecentFiles() }
+                "FAVORITE" -> { prefManager.toggleFavorite(item.uri); loadRecentFiles() }
+            }
         }
+        recyclerView.adapter = adapter
+    }
+
+    private fun loadRecentFiles() {
+        adapter.updateList(prefManager.getSortedDocumentList())
     }
 
     private fun routeFile(uri: Uri) {
-        prefManager.saveRecentFile(uri)
+        val fileName = getFileName(uri) // Düzəldilmiş funksiya
+        prefManager.saveRecentFile(uri, fileName)
         val mimeType = contentResolver.getType(uri)
-        val fileName = getFileName(uri).lowercase()
         
         when {
-            mimeType?.contains("pdf") == true || fileName.endsWith(".pdf") -> {
-                startActivity(Intent(this, PdfViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", getFileName(uri)) })
+            mimeType?.contains("pdf") == true || fileName.lowercase().endsWith(".pdf") -> {
+                startActivity(Intent(this, PdfViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", fileName) })
             }
-            fileName.endsWith(".docx") || fileName.endsWith(".xlsx") || fileName.endsWith(".pptx") -> {
-                startActivity(Intent(this, OfficeViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", getFileName(uri)) })
+            fileName.lowercase().endsWith(".docx") || fileName.lowercase().endsWith(".xlsx") || fileName.lowercase().endsWith(".pptx") -> {
+                startActivity(Intent(this, OfficeViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", fileName) })
             }
-            mimeType?.contains("html") == true || mimeType?.contains("text") == true || fileName.endsWith(".txt") -> {
-                startActivity(Intent(this, HtmlViewerActivity::class.java).apply { data = uri })
+            mimeType?.contains("html") == true || mimeType?.contains("text") == true || fileName.lowercase().endsWith(".txt") -> {
+                startActivity(Intent(this, HtmlViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", fileName) })
             }
             mimeType?.startsWith("image/") == true -> {
-                startActivity(Intent(this, ImageViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", getFileName(uri)) })
+                startActivity(Intent(this, ImageViewerActivity::class.java).apply { data = uri; putExtra("FILE_NAME", fileName) })
             }
             else -> Toast.makeText(this, "Bu fayl növü dəstəklənmir.", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // ƏN MÜHÜM DÜZƏLİŞ: Fayl adını düzgün götürmək üçün DocumentFile istifadə edirik
     private fun getFileName(uri: Uri): String {
-        var result: String? = null
-        if (uri.scheme == "content") {
+        var fileName = DocumentFile.fromSingleUri(this, uri)?.name
+        if (fileName.isNullOrBlank()) {
             val cursor = contentResolver.query(uri, null, null, null, null)
-            try { if (cursor != null && cursor.moveToFirst()) { val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (index != -1) result = cursor.getString(index) } } finally { cursor?.close() }
+            if (cursor != null && cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (index != -1) fileName = cursor.getString(index)
+                cursor.close()
+            }
         }
-        return result ?: uri.path?.substringAfterLast('/') ?: ""
+        return fileName ?: "Sənəd"
     }
 
-    inner class RecentAdapter(private val items: List<String>, private val onClick: (String) -> Unit) : RecyclerView.Adapter<RecentAdapter.ViewHolder>() {
-        inner class ViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
+    // Adapter və ViewHolder (Dəyişməyib, əvvəlki kimi qalır)
+    inner class DocumentAdapter(
+        private var items: List<DocumentItem>,
+        private val onAction: (String, DocumentItem) -> Unit
+    ) : RecyclerView.Adapter<DocumentAdapter.ViewHolder>() {
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val tvFileName: TextView = view.findViewById(R.id.tvFileName)
+            val btnPin: ImageButton = view.findViewById(R.id.btnPin)
+            val btnFavorite: ImageButton = view.findViewById(R.id.btnFavorite)
+        }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val tv = TextView(parent.context).apply { 
-                setPadding(24, 24, 24, 24); textSize = 16f; setBackgroundColor(android.graphics.Color.WHITE)
-                val params = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                layoutParams = params
-                setMargins(this, 0, 8)
-            }
-            return ViewHolder(tv)
+            return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_document, parent, false))
         }
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val path = items[position]
-            val fileName = Uri.parse(path).lastPathSegment ?: "Sənəd"
-            holder.textView.text = "📄 ${fileName.substringAfterLast('/')}"
-            holder.textView.setOnClickListener { onClick(path) }
+            val item = items[position]
+            holder.tvFileName.text = item.fileName
+            holder.btnPin.setColorFilter(if (item.isPinned) android.graphics.Color.parseColor("#1E1B4B") else android.graphics.Color.parseColor("#B0B0B0"))
+            holder.btnFavorite.setColorFilter(if (item.isFavorite) android.graphics.Color.parseColor("#F59E0B") else android.graphics.Color.parseColor("#B0B0B0"))
+            holder.itemView.setOnClickListener { onAction("CLICK", item) }
+            holder.btnPin.setOnClickListener { onAction("PIN", item) }
+            holder.btnFavorite.setOnClickListener { onAction("FAVORITE", item) }
         }
         override fun getItemCount() = items.size
-        fun setMargins(view: android.view.View, left: Int, top: Int) {
-            if (view.layoutParams is ViewGroup.MarginLayoutParams) {
-                val p = view.layoutParams as ViewGroup.MarginLayoutParams
-                p.setMargins(left, top, 0, 0)
-                view.requestLayout()
-            }
-        }
+        fun updateList(newItems: List<DocumentItem>) { items = newItems; notifyDataSetChanged() }
     }
 }
