@@ -14,7 +14,9 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            prefManager.saveRecentFile(uri, "Yeni Sənəd")
+            // YENİ SƏNƏD AÇANDA ADINI DÜZGÜN ÖTÜRÜRÜK
+            val fileName = getFileName(uri)
+            prefManager.saveRecentFile(uri, fileName)
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
@@ -63,7 +65,6 @@ abstract class BaseViewerActivity : AppCompatActivity() {
     }
 
     private fun showSettingsDialog() {
-        // GECƏ REJİMİ SİLİNDİ
         val options = arrayOf(
             "🔤 Şrifti Böyüt",
             "🔤 Şrifti Kiçilt",
@@ -83,4 +84,14 @@ abstract class BaseViewerActivity : AppCompatActivity() {
     }
 
     abstract fun onFontSizeChange(change: Int)
+    
+    // Köməkçi funksiya (Base daxilində)
+    private fun getFileName(uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            try { if (cursor != null && cursor.moveToFirst()) { val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (index != -1) result = cursor.getString(index) } } finally { cursor?.close() }
+        }
+        return result ?: "Yeni Sənəd"
+    }
 }
