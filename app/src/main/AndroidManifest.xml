@@ -6,7 +6,6 @@
         android:label="Universal Viewer"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
         
-        <!-- Paket adı dəyişmədiyi üçün köhnə sinif çağırışları qalır -->
         <activity android:name="com.example.universalviewer.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
