@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun routeFile(uri: Uri) {
-        val fileName = getFileName(uri) // Düzəldilmiş funksiya
+        val fileName = getFileName(uri)
         prefManager.saveRecentFile(uri, fileName)
         val mimeType = contentResolver.getType(uri)
         
@@ -94,7 +94,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ƏN MÜHÜM DÜZƏLİŞ: Fayl adını düzgün götürmək üçün DocumentFile istifadə edirik
     private fun getFileName(uri: Uri): String {
         var fileName = DocumentFile.fromSingleUri(this, uri)?.name
         if (fileName.isNullOrBlank()) {
@@ -108,7 +107,6 @@ class MainActivity : AppCompatActivity() {
         return fileName ?: "Sənəd"
     }
 
-    // Adapter və ViewHolder (Dəyişməyib, əvvəlki kimi qalır)
     inner class DocumentAdapter(
         private var items: List<DocumentItem>,
         private val onAction: (String, DocumentItem) -> Unit
