@@ -1,4 +1,38 @@
-// ... (yuxarı hissə eyni qalır)
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.universalviewer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.universalviewer"
+        minSdk 26 
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt']
+        }
+    }
+}
+
+// BURADAKI dependencies BLOKU VACİBDİR
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -6,13 +40,20 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     
     implementation 'com.google.code.gson:gson:2.10.1'
+    
+    // PDF oxuyucusu
     implementation 'com.github.mhiew:android-pdf-viewer:3.2.0-beta.1'
+    
+    // Şəkillər üçün
     implementation 'com.github.chrisbanes:PhotoView:2.3.0'
     
     // PDF AXTARIŞI ÜÇÜN YENİ KİTABXANA
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
     
+    // Ofis faylları üçün
     implementation 'org.apache.poi:poi:5.2.3'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
+    
+    // Arxa plan işləri üçün
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 }
