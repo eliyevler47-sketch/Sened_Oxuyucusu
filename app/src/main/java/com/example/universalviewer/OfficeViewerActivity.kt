@@ -28,7 +28,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // setContentView(R.layout.activity_viewer) SİLİNDİ
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Sənəd"
@@ -42,7 +41,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
 
         webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#F3F4F6"))
+            setBackgroundColor(Color.parseColor("#E0E0E0")) // A4 kənarı üçün boz fon
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient = WebViewClient()
@@ -74,12 +73,14 @@ class OfficeViewerActivity : BaseViewerActivity() {
                                     } 
                                     else if (fileName.endsWith(".xlsx")) {
                                         val html = convertExcelToHtml(bytes.inputStream())
-                                        val base64Html = Base64.encodeToString(html.toByteArray(), Base64.NO_WRAP)
+                                        // DÜZƏLİŞ: Charset.UTF_8 istifadə edirik
+                                        val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     } 
                                     else if (fileName.endsWith(".pptx")) {
                                         val html = convertPptToHtml(bytes.inputStream())
-                                        val base64Html = Base64.encodeToString(html.toByteArray(), Base64.NO_WRAP)
+                                        // DÜZƏLİŞ: Charset.UTF_8 istifadə edirik
+                                        val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     }
                                 }
@@ -125,7 +126,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
         val slideShow = XMLSlideShow(inputStream)
         val html = StringBuilder("")
         for ((index, slide) in slideShow.slides.withIndex()) {
-            html.append("<div class='slide'>")
+            html.append("<div class='paper slide'>")
             html.append("<div class='slide-title'>Slayd ${index + 1}</div>")
             html.append("<div class='slide-content'>")
             for (shape in slide.shapes) {
@@ -159,21 +160,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
             .show()
     }
 
-    override fun onThemeToggle() {
-        webView.evaluateJavascript("""
-            (function() {
-                var body = document.body;
-                if (body.style.backgroundColor === 'black' || body.style.backgroundColor === 'rgb(0, 0, 0)') {
-                    body.style.backgroundColor = '#F3F4F6';
-                    document.querySelectorAll('.docx, .slide, .paper').forEach(el => { el.style.backgroundColor = 'white'; el.style.color = '#333'; });
-                } else {
-                    body.style.backgroundColor = 'black';
-                    document.querySelectorAll('.docx, .slide, .paper').forEach(el => { el.style.backgroundColor = '#1E1E1E'; el.style.color = 'white'; });
-                }
-            })();
-        """.trimIndent(), null)
-    }
-
     override fun onFontSizeChange(change: Int) {
         if (change == 0) currentFontSize = 16 else currentFontSize += change
         webView.evaluateJavascript("document.body.style.fontSize='${currentFontSize}px';", null)
@@ -185,6 +171,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
             val cursor = contentResolver.query(uri, null, null, null, null)
             try { if (cursor != null && cursor.moveToFirst()) { val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (index != -1) result = cursor.getString(index) } } finally { cursor?.close() }
         }
-        return result ?: uri.path?.substringAfterLast('/') ?: ""
+        return result ?: "Sənəd"
     }
 }
