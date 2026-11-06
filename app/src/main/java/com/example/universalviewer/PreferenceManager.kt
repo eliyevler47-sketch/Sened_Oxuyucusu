@@ -20,19 +20,56 @@ class PreferenceManager(context: Context) {
         return "$minutes dəqiqə"
     }
 
-    fun saveRecentFile(uri: Uri) {
-        val recentList = getRecentFiles().toMutableList()
+    fun saveRecentFile(uri: Uri, fileName: String) {
+        val list = getDocumentList().toMutableList()
         val uriString = uri.toString()
-        recentList.remove(uriString)
-        recentList.add(0, uriString)
-        val trimmedList = recentList.take(5)
+        
+        val existingIndex = list.indexOfFirst { it.uri == uriString }
+        if (existingIndex != -1) {
+            val existing = list[existingIndex]
+            existing.lastOpened = System.currentTimeMillis()
+            list[existingIndex] = existing
+        } else {
+            list.add(0, DocumentItem(uriString, fileName))
+        }
+
+        val trimmedList = list.take(20)
         val json = Gson().toJson(trimmedList)
-        prefs.edit().putString("recent_files", json).apply()
+        prefs.edit().putString("document_list", json).apply()
     }
 
-    fun getRecentFiles(): List<String> {
-        val json = prefs.getString("recent_files", "[]")
-        val type = object : TypeToken<List<String>>() {}.type
-        return Gson().fromJson(json, type)
+    fun getDocumentList(): List<DocumentItem> {
+        val json = prefs.getString("document_list", "[]")
+        val type = object : TypeToken<List<DocumentItem>>() {}.type
+        return try {
+            Gson().fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun togglePin(uri: String) {
+        val list = getDocumentList().toMutableList()
+        val index = list.indexOfFirst { it.uri == uri }
+        if (index != -1) {
+            list[index].isPinned = !list[index].isPinned
+            prefs.edit().putString("document_list", Gson().toJson(list)).apply()
+        }
+    }
+
+    fun toggleFavorite(uri: String) {
+        val list = getDocumentList().toMutableList()
+        val index = list.indexOfFirst { it.uri == uri }
+        if (index != -1) {
+            list[index].isFavorite = !list[index].isFavorite
+            prefs.edit().putString("document_list", Gson().toJson(list)).apply()
+        }
+    }
+
+    fun getSortedDocumentList(): List<DocumentItem> {
+        val list = getDocumentList()
+        return list.sortedWith(compareByDescending<DocumentItem> { it.isPinned }
+            .thenByDescending { it.isFavorite }
+            .thenByDescending { it.lastOpened })
     }
 }
