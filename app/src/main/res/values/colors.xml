@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_main">#121212</color>
+    <color name="bg_surface">#1E1E1E</color>
+    <color name="bg_surface_light">#2C2C2C</color>
+    
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#A0A0A0</color>
+    
+    <color name="accent_orange">#FF5722</color>
+    <color name="accent_blue">#2979FF</color>
+    <color name="accent_green">#00C853</color>
+    
+    <color name="cyber_icon_inactive">#666666</color>
+</resources>
