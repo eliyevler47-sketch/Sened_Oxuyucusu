@@ -9,7 +9,6 @@ import com.google.android.material.appbar.MaterialToolbar
 class ImageViewerActivity : BaseViewerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // setContentView(R.layout.activity_viewer) SİLİNDİ
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "Şəkil"
@@ -22,6 +21,6 @@ class ImageViewerActivity : BaseViewerActivity() {
         intent.data?.let { uri: Uri -> photoView.setImageURI(uri) }
     }
 
-    override fun onThemeToggle() {}
+    // Yalnız bunu saxlayırıq
     override fun onFontSizeChange(change: Int) {}
 }
