@@ -14,7 +14,7 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            prefManager.saveRecentFile(uri)
+            prefManager.saveRecentFile(uri, "Yeni Sənəd")
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
@@ -23,8 +23,6 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // ÇÖKMƏNİN QARŞISINI ALAN HİSSƏ: Dizaynı burada yükləyirik
         setContentView(R.layout.activity_viewer) 
         
         prefManager = PreferenceManager(this)
@@ -40,12 +38,7 @@ abstract class BaseViewerActivity : AppCompatActivity() {
                     true 
                 }
                 R.id.action_open_new -> { 
-                    filePickerLauncher.launch(arrayOf(
-                        "application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                        "text/plain", "text/html", "image/*"
-                    ))
+                    filePickerLauncher.launch(arrayOf("*/*"))
                     true 
                 }
                 else -> false
@@ -65,14 +58,13 @@ abstract class BaseViewerActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         if (startTime > 0) {
-            val timeSpent = System.currentTimeMillis() - startTime
-            prefManager.addUsageTime(timeSpent)
+            prefManager.addUsageTime(System.currentTimeMillis() - startTime)
         }
     }
 
     private fun showSettingsDialog() {
+        // GECƏ REJİMİ SİLİNDİ
         val options = arrayOf(
-            "🌙 Gecə/Gündüz Rejimi",
             "🔤 Şrifti Böyüt",
             "🔤 Şrifti Kiçilt",
             "🔤 Standart Şrift",
@@ -83,14 +75,12 @@ abstract class BaseViewerActivity : AppCompatActivity() {
             .setTitle("Sənəd Parametrləri")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> onThemeToggle()
-                    1 -> onFontSizeChange(2)
-                    2 -> onFontSizeChange(-2)
-                    3 -> onFontSizeChange(0)
+                    0 -> onFontSizeChange(2)
+                    1 -> onFontSizeChange(-2)
+                    2 -> onFontSizeChange(0)
                 }
             }.show()
     }
 
-    abstract fun onThemeToggle()
     abstract fun onFontSizeChange(change: Int)
 }
