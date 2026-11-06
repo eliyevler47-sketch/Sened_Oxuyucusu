@@ -5,8 +5,11 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
-import com.example.universalviewer.*
-import com.example.universalviewer.data.PreferenceManager
+import com.example.universalviewer.HtmlViewerActivity
+import com.example.universalviewer.ImageViewerActivity
+import com.example.universalviewer.OfficeViewerActivity
+import com.example.universalviewer.PdfViewerActivity
+import com.example.universalviewer.PreferenceManager
 
 object DocumentRouter {
     
@@ -25,6 +28,7 @@ object DocumentRouter {
 
     fun routeFile(context: Context, uri: Uri) {
         val fileName = getFileName(context, uri)
+        
         val prefManager = PreferenceManager(context)
         prefManager.saveRecentFile(uri, fileName)
 
