@@ -1,30 +1,32 @@
 package com.example.universalviewer.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
-import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.universalviewer.PreferenceManager
+import com.example.universalviewer.R
 import com.example.universalviewer.databinding.FragmentHomeBinding
 import com.example.universalviewer.databinding.ItemCategoryBinding
 import com.example.universalviewer.databinding.ItemToolBinding
 import com.example.universalviewer.utils.DocumentRouter
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
+import java.io.FileOutputStream
 
 class HomeFragment : Fragment() {
 
@@ -38,13 +40,28 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // Kamera üçün launcher (Scan)
+    // Şəkil seçib PDF-ə çevirmək üçün
+    private val imageToPdfLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            convertImageToPdf(uri)
+        }
+    }
+
     private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
         if (success) {
-            Toast.makeText(requireContext(), "Şəkil çəkildi! Tezliklə OCR əlavə olunacaq.", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), "Şəkil çəkildi!", Toast.LENGTH_SHORT).show()
         }
     }
     private var currentPhotoUri: Uri? = null
+
+    // Kamera icazəsi istəmək üçün
+    private val requestCameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            openCamera()
+        } else {
+            Toast.makeText(requireContext(), "Kamera üçün icazə verilmədi.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -94,16 +111,22 @@ class HomeFragment : Fragment() {
     private fun setupTools() {
         val tools = listOf(
             ToolItem("Scan", android.R.drawable.ic_menu_camera, "#00C853"),
-            ToolItem("Create", android.R.drawable.ic_menu_add, "#FF5722"),
-            ToolItem("Convert", android.R.drawable.ic_menu_send, "#2979FF"),
+            ToolItem("Recent", android.R.drawable.ic_menu_recent_history, "#2979FF"),
+            ToolItem("Convert", android.R.drawable.ic_menu_send, "#FF5722"),
             ToolItem("Share", android.R.drawable.ic_menu_share, "#FF5722")
         )
         binding.rvTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvTools.adapter = ToolAdapter(tools) { toolName ->
             when(toolName) {
-                "Scan" -> openCamera()
-                "Create" -> showCreateFileDialog()
-                "Convert" -> Toast.makeText(requireContext(), "Fayl çevirmə funksiyası tezliklə!", Toast.LENGTH_SHORT).show()
+                "Scan" -> {
+                    if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        openCamera()
+                    } else {
+                        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+                "Recent" -> findNavController().navigate(R.id.nav_recent)
+                "Convert" -> imageToPdfLauncher.launch(arrayOf("image/*")) // Şəkil seçib PDF edir
                 "Share" -> shareApp()
             }
         }
@@ -123,29 +146,26 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun showCreateFileDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = "Fayl adı (məs: qeyd)"
-            inputType = InputType.TYPE_CLASS_TEXT
+    // Şəkli PDF-ə çevirən real funksiya
+    private fun convertImageToPdf(imageUri: Uri) {
+        try {
+            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(requireContext().contentResolver, imageUri)
+            val pdfDocument = PdfDocument()
+            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+            pdfDocument.finishPage(page)
+
+            val pdfFile = File(requireContext().cacheDir, "converted_${System.currentTimeMillis()}.pdf")
+            pdfDocument.writeTo(FileOutputStream(pdfFile))
+            pdfDocument.close()
+
+            val pdfUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
+            Toast.makeText(requireContext(), "PDF yaradıldı!", Toast.LENGTH_SHORT).show()
+            DocumentRouter.routeFile(requireContext(), pdfUri)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Çevirmə xətası: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        AlertDialog.Builder(requireContext())
-            .setTitle("Yeni TXT Faylı Yarat")
-            .setView(input)
-            .setPositiveButton("Yarat") { _, _ ->
-                val fileName = input.text.toString().trim()
-                if (fileName.isNotEmpty()) {
-                    try {
-                        val file = File(requireContext().getExternalFilesDir(null), "$fileName.txt")
-                        file.writeText("Bu fayl Universal Viewer ilə yaradıldı.\n\nTarix: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())}")
-                        val uri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", file)
-                        DocumentRouter.routeFile(requireContext(), uri)
-                    } catch (e: Exception) {
-                        Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .setNegativeButton("Ləğv et", null)
-            .show()
     }
 
     private fun shareApp() {
