@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 
 class HtmlViewerActivity : BaseViewerActivity() {
     private lateinit var webView: WebView
-    private var currentFontLevel = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +58,6 @@ class HtmlViewerActivity : BaseViewerActivity() {
 
                         withContext(Dispatchers.Main) {
                             webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
-                            applyFontSize()
                         }
                     } else {
                         withContext(Dispatchers.Main) {
@@ -73,15 +71,5 @@ class HtmlViewerActivity : BaseViewerActivity() {
                 }
             }
         }
-    }
-
-    override fun onFontSizeChange(level: Int) {
-        currentFontLevel = level
-        applyFontSize()
-    }
-
-    private fun applyFontSize() {
-        val newSize = 16 + (currentFontLevel * 2)
-        webView.evaluateJavascript("document.body.style.fontSize='${newSize}px';", null)
     }
 }
