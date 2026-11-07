@@ -1,29 +1,22 @@
 package com.example.universalviewer.ui
 
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.universalviewer.PreferenceManager
-import com.example.universalviewer.R
 import com.example.universalviewer.databinding.FragmentHomeBinding
 import com.example.universalviewer.databinding.ItemCategoryBinding
-import com.example.universalviewer.databinding.ItemToolBinding
+import com.example.universalviewer.databinding.ItemDocumentBinding
 import com.example.universalviewer.utils.DocumentRouter
-import com.google.android.material.bottomnavigation.BottomNavigationView
-import java.io.File
-import java.io.FileOutputStream
 
 class HomeFragment : Fragment() {
 
@@ -31,18 +24,8 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var prefManager: PreferenceManager
 
-    // Fayl açmaq üçün
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            DocumentRouter.routeFile(requireContext(), uri)
-        }
-    }
-
-    // Şəkli PDF-ə çevirmək üçün
-    private val imageToPdfLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            convertImageToPdf(uri)
-        }
+        if (uri != null) { DocumentRouter.routeFile(requireContext(), uri) }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -53,24 +36,22 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         prefManager = PreferenceManager(requireContext())
-        
-        setupTools()
     }
 
     override fun onResume() {
         super.onResume()
-        // Hər dəfə Home-a qayıdanda siyahını yeniləyirik
         setupCategories()
+        setupRecentFiles()
     }
 
     private fun setupCategories() {
         val docs = prefManager.getDocumentList()
-        
         val pdfCount = docs.count { it.fileName.endsWith(".pdf", true) }
         val wordCount = docs.count { it.fileName.endsWith(".docx", true) || it.fileName.endsWith(".doc", true) }
         val excelCount = docs.count { it.fileName.endsWith(".xlsx", true) || it.fileName.endsWith(".xls", true) }
         val pptCount = docs.count { it.fileName.endsWith(".pptx", true) || it.fileName.endsWith(".ppt", true) }
         val txtCount = docs.count { it.fileName.endsWith(".txt", true) || it.fileName.endsWith(".html", true) }
+        val imgCount = docs.count { it.fileName.endsWith(".jpg", true) || it.fileName.endsWith(".png", true) }
 
         val categories = listOf(
             CategoryItem("All", docs.size, android.R.drawable.ic_menu_sort_by_size, "#2979FF"),
@@ -78,10 +59,11 @@ class HomeFragment : Fragment() {
             CategoryItem("Word", wordCount, android.R.drawable.ic_menu_edit, "#2979FF"),
             CategoryItem("Excel", excelCount, android.R.drawable.ic_menu_agenda, "#00C853"),
             CategoryItem("PPT", pptCount, android.R.drawable.ic_menu_slideshow, "#FF5722"),
-            CategoryItem("TXT", txtCount, android.R.drawable.ic_menu_info_details, "#A0A0A0")
+            CategoryItem("TXT", txtCount, android.R.drawable.ic_menu_info_details, "#A0A0A0"),
+            CategoryItem("Image", imgCount, android.R.drawable.ic_menu_gallery, "#FFCA28")
         )
 
-        binding.rvCategories.layoutManager = GridLayoutManager(requireContext(), 2)
+        binding.rvCategories.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.rvCategories.adapter = CategoryAdapter(categories) { categoryName ->
             val mimeTypes = when(categoryName) {
                 "PDF" -> arrayOf("application/pdf")
@@ -89,78 +71,22 @@ class HomeFragment : Fragment() {
                 "Excel" -> arrayOf("application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 "PPT" -> arrayOf("application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
                 "TXT" -> arrayOf("text/plain", "text/html")
+                "Image" -> arrayOf("image/*")
                 else -> arrayOf("*/*")
             }
             filePickerLauncher.launch(mimeTypes)
         }
     }
 
-    private fun setupTools() {
-        val tools = listOf(
-            ToolItem("Open", android.R.drawable.ic_menu_add, "#00C853"),
-            ToolItem("Recent", android.R.drawable.ic_menu_recent_history, "#2979FF"),
-            ToolItem("Convert", android.R.drawable.ic_menu_send, "#FF5722"),
-            ToolItem("Share", android.R.drawable.ic_menu_share, "#FF5722")
-        )
-        binding.rvTools.layoutManager = GridLayoutManager(requireContext(), 4)
-        binding.rvTools.adapter = ToolAdapter(tools) { toolName ->
-            when(toolName) {
-                "Open" -> filePickerLauncher.launch(arrayOf("*/*"))
-                "Recent" -> {
-                    val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_nav)
-                    bottomNav?.selectedItemId = R.id.nav_recent
-                }
-                "Convert" -> imageToPdfLauncher.launch(arrayOf("image/*"))
-                "Share" -> shareApp()
-            }
+    private fun setupRecentFiles() {
+        val recentDocs = prefManager.getSortedDocumentList().take(5) // İlk 5 ədəd
+        binding.rvRecentFiles.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvRecentFiles.adapter = RecentMiniAdapter(recentDocs) { uri ->
+            DocumentRouter.routeFile(requireContext(), Uri.parse(uri))
         }
-    }
-
-    private fun convertImageToPdf(imageUri: Uri) {
-        try {
-            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(requireContext().contentResolver, imageUri)
-            val pdfDocument = PdfDocument()
-            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, 1).create()
-            val page = pdfDocument.startPage(pageInfo)
-            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
-            pdfDocument.finishPage(page)
-
-            val pdfFile = File(requireContext().cacheDir, "converted_${System.currentTimeMillis()}.pdf")
-            pdfDocument.writeTo(FileOutputStream(pdfFile))
-            pdfDocument.close()
-
-            val pdfUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
-            Toast.makeText(requireContext(), "PDF yaradıldı!", Toast.LENGTH_SHORT).show()
-            DocumentRouter.routeFile(requireContext(), pdfUri)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Çevirmə xətası: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun shareApp() {
-        try {
-            val appInfo = requireContext().packageManager.getApplicationInfo(requireContext().packageName, 0)
-            val apkFile = File(appInfo.publicSourceDir)
-            val apkUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", apkFile)
-
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/vnd.android.package-archive"
-                putExtra(Intent.EXTRA_STREAM, apkUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(intent, "Tətbiqi Paylaş"))
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Paylaşma xətası: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     data class CategoryItem(val name: String, val count: Int, val iconRes: Int, val colorHex: String)
-    data class ToolItem(val name: String, val iconRes: Int, val colorHex: String)
 
     inner class CategoryAdapter(
         private val items: List<CategoryItem>,
@@ -184,24 +110,32 @@ class HomeFragment : Fragment() {
         override fun getItemCount() = items.size
     }
 
-    inner class ToolAdapter(
-        private val items: List<ToolItem>,
+    // Recent üçün sadə adapter (ItemDocument layout-undan istifadə edir)
+    inner class RecentMiniAdapter(
+        private val items: List<com.example.universalviewer.DocumentItem>,
         private val onClick: (String) -> Unit
-    ) : RecyclerView.Adapter<ToolAdapter.ViewHolder>() {
-        inner class ViewHolder(val binding: ItemToolBinding) : RecyclerView.ViewHolder(binding.root)
+    ) : RecyclerView.Adapter<RecentMiniAdapter.ViewHolder>() {
+        inner class ViewHolder(val binding: ItemDocumentBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(ItemToolBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            return ViewHolder(ItemDocumentBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = items[position]
-            holder.binding.tvToolName.text = item.name
-            holder.binding.ivToolIcon.setImageResource(item.iconRes)
-            holder.binding.ivToolIcon.setColorFilter(Color.parseColor(item.colorHex), PorterDuff.Mode.SRC_IN)
-            holder.binding.root.setOnClickListener { onClick(item.name) }
+            holder.binding.tvFileName.text = item.fileName
+            holder.binding.tvLastOpened.text = "Son açılan"
+            // Pin və Favori düymələrini burada gizlədirik ki, sadə görünsün
+            holder.binding.btnFavorite.visibility = View.GONE
+            holder.binding.btnPin.visibility = View.GONE
+            holder.binding.root.setOnClickListener { onClick(item.uri) }
         }
 
         override fun getItemCount() = items.size
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
