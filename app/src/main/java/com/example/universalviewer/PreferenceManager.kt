@@ -95,10 +95,10 @@ class PreferenceManager(context: Context) {
     }
 
     // ==================== FONT SIZE ====================
-    // 0 = Kiçik, 1 = Orta, 2 = Böyük
-    fun getFontSize(): Int = prefs.getInt("font_size", 1)
+    // -2 = Daha Kiçik, -1 = Kiçik, 0 = Standart, 1 = Böyük, 2 = Daha Böyük
+    fun getFontSize(): Int = prefs.getInt("font_size", 0)
 
     fun setFontSize(value: Int) {
-        prefs.edit().putInt("font_size", value.coerceIn(0, 2)).apply()
+        prefs.edit().putInt("font_size", value.coerceIn(-2, 2)).apply()
     }
 }
