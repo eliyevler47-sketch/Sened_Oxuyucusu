@@ -25,7 +25,7 @@ class RecentAdapter(
             override fun areContentsTheSame(a: DocumentItem, b: DocumentItem) =
                 a.uri == b.uri && a.fileName == b.fileName &&
                 a.isPinned == b.isPinned && a.isFavorite == b.isFavorite &&
-                a.lastOpened == b.lastOpened
+                a.lastOpened == b.lastOpened && a.timeSpentMs == b.timeSpentMs
         }
     }
 
@@ -45,33 +45,38 @@ class RecentAdapter(
 
         b.tvFileName.text = item.fileName
 
-        b.tvLastOpened.text = DateUtils.getRelativeTimeSpanString(
-            item.lastOpened,
-            System.currentTimeMillis(),
-            DateUtils.MINUTE_IN_MILLIS
+        // Son açılma və Oxunma vaxtını birləşdiririk
+        val relativeTime = DateUtils.getRelativeTimeSpanString(
+            item.lastOpened, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS
         )
+        
+        val readTimeStr = if (item.timeSpentMs > 0) {
+            val minutes = item.timeSpentMs / 60000
+            val seconds = (item.timeSpentMs % 60000) / 1000
+            if (minutes > 0) " • $minutes dəq oxunub" else " • $seconds san oxunub"
+        } else ""
+
+        b.tvLastOpened.text = "$relativeTime$readTimeStr"
 
         val (iconRes, colorRes) = iconFor(item.fileName)
         b.ivIcon.setImageResource(iconRes)
-        b.ivIcon.setColorFilter(
-            ContextCompat.getColor(ctx, colorRes),
-            PorterDuff.Mode.SRC_IN
-        )
+        b.ivIcon.setColorFilter(ContextCompat.getColor(ctx, colorRes), PorterDuff.Mode.SRC_IN)
 
-        // Favori
-        b.btnFavorite.setImageResource(android.R.drawable.btn_star)
+        // Favori İkonu
+        b.btnFavorite.setImageResource(
+            if (item.isFavorite) R.drawable.ic_star_filled else R.drawable.ic_star_border
+        )
         b.btnFavorite.setColorFilter(
-            if (item.isFavorite) ContextCompat.getColor(ctx, R.color.accent_orange)
-            else ContextCompat.getColor(ctx, R.color.cyber_icon_inactive),
+            if (item.isFavorite) 0xFFFFC107.toInt() else ContextCompat.getColor(ctx, R.color.cyber_icon_inactive),
             PorterDuff.Mode.SRC_IN
         )
 
-        // Pin
-        b.btnPin.setImageResource(android.R.drawable.ic_menu_mylocation)
-        b.btnPin.alpha = if (item.isPinned) 1f else 0.5f
+        // Pin İkonu
+        b.btnPin.setImageResource(
+            if (item.isPinned) R.drawable.ic_pin_filled else R.drawable.ic_pin_border
+        )
         b.btnPin.setColorFilter(
-            if (item.isPinned) ContextCompat.getColor(ctx, R.color.accent_orange)
-            else ContextCompat.getColor(ctx, R.color.cyber_icon_inactive),
+            if (item.isPinned) ContextCompat.getColor(ctx, R.color.accent_orange) else ContextCompat.getColor(ctx, R.color.cyber_icon_inactive),
             PorterDuff.Mode.SRC_IN
         )
 
@@ -86,24 +91,14 @@ class RecentAdapter(
 
     private fun iconFor(fileName: String): Pair<Int, Int> {
         return when {
-            fileName.endsWith(".pdf", true) ->
-                android.R.drawable.ic_menu_save to R.color.accent_orange
-            fileName.endsWith(".docx", true) || fileName.endsWith(".doc", true) ->
-                android.R.drawable.ic_menu_edit to R.color.accent_blue
-            fileName.endsWith(".xlsx", true) || fileName.endsWith(".xls", true) ->
-                android.R.drawable.ic_menu_agenda to R.color.accent_green
-            fileName.endsWith(".pptx", true) || fileName.endsWith(".ppt", true) ->
-                android.R.drawable.ic_menu_slideshow to R.color.accent_orange
-            fileName.endsWith(".txt", true) ->
-                android.R.drawable.ic_menu_info_details to R.color.text_secondary
-            fileName.endsWith(".html", true) || fileName.endsWith(".htm", true) ->
-                android.R.drawable.ic_menu_view to R.color.accent_blue
-            fileName.endsWith(".jpg", true) || fileName.endsWith(".jpeg", true) ||
-            fileName.endsWith(".png", true) || fileName.endsWith(".gif", true) ||
-            fileName.endsWith(".webp", true) ->
-                android.R.drawable.ic_menu_gallery to R.color.accent_orange
-            else ->
-                android.R.drawable.ic_menu_sort_by_size to R.color.text_secondary
+            fileName.endsWith(".pdf", true) -> android.R.drawable.ic_menu_save to R.color.accent_orange
+            fileName.endsWith(".docx", true) || fileName.endsWith(".doc", true) -> android.R.drawable.ic_menu_edit to R.color.accent_blue
+            fileName.endsWith(".xlsx", true) || fileName.endsWith(".xls", true) -> android.R.drawable.ic_menu_agenda to R.color.accent_green
+            fileName.endsWith(".pptx", true) || fileName.endsWith(".ppt", true) -> android.R.drawable.ic_menu_slideshow to R.color.accent_orange
+            fileName.endsWith(".txt", true) -> android.R.drawable.ic_menu_info_details to R.color.text_secondary
+            fileName.endsWith(".html", true) || fileName.endsWith(".htm", true) -> android.R.drawable.ic_menu_view to R.color.accent_blue
+            fileName.endsWith(".jpg", true) || fileName.endsWith(".jpeg", true) || fileName.endsWith(".png", true) || fileName.endsWith(".gif", true) -> android.R.drawable.ic_menu_gallery to R.color.accent_orange
+            else -> android.R.drawable.ic_menu_sort_by_size to R.color.text_secondary
         }
     }
 }
