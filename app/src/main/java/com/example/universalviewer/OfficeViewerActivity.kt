@@ -12,19 +12,19 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.lifecycle.lifecycleScope
 import org.apache.poi.ss.usermodel.DataFormatter
-import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.apache.poi.xslf.usermodel.XMLSlideShow
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.InputStream
 
 class OfficeViewerActivity : BaseViewerActivity() {
     private lateinit var webView: WebView
-    private var currentFontSize = 16
+    private var currentFontSizeLevel = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +41,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
 
         webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundColor(Color.parseColor("#E0E0E0")) // A4 kənarı üçün boz fon
+            setBackgroundColor(Color.parseColor("#E0E0E0"))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient = WebViewClient()
@@ -53,7 +53,7 @@ class OfficeViewerActivity : BaseViewerActivity() {
                 try {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
-                        val fileName = getFileName(uri).lowercase()
+                        val fileName = DocumentRouterHelper.getFileName(this@OfficeViewerActivity, uri).lowercase()
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
@@ -73,16 +73,17 @@ class OfficeViewerActivity : BaseViewerActivity() {
                                     } 
                                     else if (fileName.endsWith(".xlsx")) {
                                         val html = convertExcelToHtml(bytes.inputStream())
-                                        // DÜZƏLİŞ: Charset.UTF_8 istifadə edirik
                                         val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     } 
                                     else if (fileName.endsWith(".pptx")) {
                                         val html = convertPptToHtml(bytes.inputStream())
-                                        // DÜZƏLİŞ: Charset.UTF_8 istifadə edirik
                                         val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     }
+                                    
+                                    // Sənəd yükləndikdən sonra şrift ölçüsünü tətbiq et
+                                    applyFontSizeToWebView()
                                 }
                             }
                         }
@@ -160,17 +161,15 @@ class OfficeViewerActivity : BaseViewerActivity() {
             .show()
     }
 
-    override fun onFontSizeChange(change: Int) {
-        if (change == 0) currentFontSize = 16 else currentFontSize += change
-        webView.evaluateJavascript("document.body.style.fontSize='${currentFontSize}px';", null)
+    override fun onFontSizeChange(level: Int) {
+        currentFontSizeLevel = level
+        applyFontSizeToWebView()
     }
-    
-    private fun getFileName(uri: android.net.Uri): String {
-        var result: String? = null
-        if (uri.scheme == "content") {
-            val cursor = contentResolver.query(uri, null, null, null, null)
-            try { if (cursor != null && cursor.moveToFirst()) { val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (index != -1) result = cursor.getString(index) } } finally { cursor?.close() }
-        }
-        return result ?: "Sənəd"
+
+    private fun applyFontSizeToWebView() {
+        // Base ölçü 16px-dir. Hər level 2px dəyişir.
+        // -2 = 12px, -1 = 14px, 0 = 16px, 1 = 18px, 2 = 20px
+        val newSize = 16 + (currentFontSizeLevel * 2)
+        webView.evaluateJavascript("document.body.style.fontSize='${newSize}px';", null)
     }
 }
