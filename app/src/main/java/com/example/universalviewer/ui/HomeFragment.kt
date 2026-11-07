@@ -1,5 +1,6 @@
 package com.example.universalviewer.ui
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.net.Uri
@@ -7,6 +8,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
@@ -23,7 +25,6 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var prefManager: PreferenceManager
 
-    // Fayl seçmə pəncərəsi
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             DocumentRouter.routeFile(requireContext(), uri)
@@ -44,7 +45,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupCategories() {
-        val docs = prefManager.getDocumentList() // DÜZƏLİŞ: getDocuments() -> getDocumentList()
+        val docs = prefManager.getDocumentList()
         
         val pdfCount = docs.count { it.fileName.endsWith(".pdf", true) }
         val wordCount = docs.count { it.fileName.endsWith(".docx", true) || it.fileName.endsWith(".doc", true) }
@@ -63,7 +64,6 @@ class HomeFragment : Fragment() {
 
         binding.rvCategories.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.rvCategories.adapter = CategoryAdapter(categories) { categoryName ->
-            // Klikləyəndə fayl seçmə pəncərəsini aç
             val mimeTypes = when(categoryName) {
                 "PDF" -> arrayOf("application/pdf")
                 "Word" -> arrayOf("application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -84,7 +84,19 @@ class HomeFragment : Fragment() {
             ToolItem("Share", android.R.drawable.ic_menu_share, "#FF5722")
         )
         binding.rvTools.layoutManager = GridLayoutManager(requireContext(), 4)
-        binding.rvTools.adapter = ToolAdapter(tools)
+        binding.rvTools.adapter = ToolAdapter(tools) { toolName ->
+            when(toolName) {
+                "Share" -> {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, "Universal Viewer tətbiqini yoxla! Bütün sənədləri bir yerdə oxu.")
+                        type = "text/plain"
+                    }
+                    startActivity(Intent.createChooser(sendIntent, "Paylaş"))
+                }
+                else -> Toast.makeText(requireContext(), "$toolName funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -117,7 +129,10 @@ class HomeFragment : Fragment() {
         override fun getItemCount() = items.size
     }
 
-    inner class ToolAdapter(private val items: List<ToolItem>) : RecyclerView.Adapter<ToolAdapter.ViewHolder>() {
+    inner class ToolAdapter(
+        private val items: List<ToolItem>,
+        private val onClick: (String) -> Unit
+    ) : RecyclerView.Adapter<ToolAdapter.ViewHolder>() {
         inner class ViewHolder(val binding: ItemToolBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -129,6 +144,7 @@ class HomeFragment : Fragment() {
             holder.binding.tvToolName.text = item.name
             holder.binding.ivToolIcon.setImageResource(item.iconRes)
             holder.binding.ivToolIcon.setColorFilter(Color.parseColor(item.colorHex), PorterDuff.Mode.SRC_IN)
+            holder.binding.root.setOnClickListener { onClick(item.name) }
         }
 
         override fun getItemCount() = items.size
