@@ -20,7 +20,4 @@ class ImageViewerActivity : BaseViewerActivity() {
         container.addView(photoView)
         intent.data?.let { uri: Uri -> photoView.setImageURI(uri) }
     }
-
-    // Yalnız bunu saxlayırıq
-    override fun onFontSizeChange(change: Int) {}
 }
