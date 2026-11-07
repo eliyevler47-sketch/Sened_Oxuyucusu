@@ -3,6 +3,7 @@ package com.example.universalviewer.ui
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,7 +13,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.universalviewer.PreferenceManager
@@ -21,7 +21,9 @@ import com.example.universalviewer.databinding.FragmentHomeBinding
 import com.example.universalviewer.databinding.ItemCategoryBinding
 import com.example.universalviewer.databinding.ItemToolBinding
 import com.example.universalviewer.utils.DocumentRouter
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import java.io.File
+import java.io.FileOutputStream
 
 class HomeFragment : Fragment() {
 
@@ -29,9 +31,17 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var prefManager: PreferenceManager
 
+    // Fayl açmaq üçün
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             DocumentRouter.routeFile(requireContext(), uri)
+        }
+    }
+
+    // Şəkli PDF-ə çevirmək üçün
+    private val imageToPdfLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            convertImageToPdf(uri)
         }
     }
 
@@ -44,8 +54,13 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         prefManager = PreferenceManager(requireContext())
         
-        setupCategories()
         setupTools()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Hər dəfə Home-a qayıdanda siyahını yeniləyirik
+        setupCategories()
     }
 
     private fun setupCategories() {
@@ -92,12 +107,33 @@ class HomeFragment : Fragment() {
             when(toolName) {
                 "Open" -> filePickerLauncher.launch(arrayOf("*/*"))
                 "Recent" -> {
-                    // Naviqasiya xətası həll edildi
-                    findNavController().navigate(R.id.nav_recent)
+                    val bottomNav = activity?.findViewById<BottomNavigationView>(R.id.bottom_nav)
+                    bottomNav?.selectedItemId = R.id.nav_recent
                 }
-                "Convert" -> Toast.makeText(requireContext(), "Şəkil çevirmə funksiyası tezliklə!", Toast.LENGTH_SHORT).show()
+                "Convert" -> imageToPdfLauncher.launch(arrayOf("image/*"))
                 "Share" -> shareApp()
             }
+        }
+    }
+
+    private fun convertImageToPdf(imageUri: Uri) {
+        try {
+            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(requireContext().contentResolver, imageUri)
+            val pdfDocument = PdfDocument()
+            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+            pdfDocument.finishPage(page)
+
+            val pdfFile = File(requireContext().cacheDir, "converted_${System.currentTimeMillis()}.pdf")
+            pdfDocument.writeTo(FileOutputStream(pdfFile))
+            pdfDocument.close()
+
+            val pdfUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
+            Toast.makeText(requireContext(), "PDF yaradıldı!", Toast.LENGTH_SHORT).show()
+            DocumentRouter.routeFile(requireContext(), pdfUri)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Çevirmə xətası: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
