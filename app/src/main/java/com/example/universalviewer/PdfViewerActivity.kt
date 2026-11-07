@@ -50,9 +50,16 @@ class PdfViewerActivity : BaseViewerActivity() {
                 }
 
                 pdfView.fromFile(pdfFile)
-                    .enableSwipe(true).swipeHorizontal(false).enableDoubletap(true)
-                    .defaultPage(0).enableAnnotationRendering(false).password(null)
-                    .scrollHandle(null).enableAntialiasing(true).spacing(24).pageSnap(true)
+                    .enableSwipe(true)
+                    .swipeHorizontal(false)
+                    .enableDoubletap(true)
+                    .defaultPage(0)
+                    .enableAnnotationRendering(false)
+                    .password(null)
+                    .scrollHandle(null)
+                    .enableAntialiasing(true)
+                    .spacing(16) // Səhifələr arası məsafə
+                    .pageSnap(false) // AVTOMATİK TULLANMANI LƏĞV EDİR (Sərbəst sürüşmə)
                     .load()
             } catch (e: Exception) { 
                 e.printStackTrace() 
@@ -82,10 +89,11 @@ class PdfViewerActivity : BaseViewerActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val document = PDDocument.load(pdfFile)
-                val stripper = PDFTextStripper()
                 var foundPage = -1
-
+                
+                // Hər səhifə üçün ayrıca stripper yaradırıq ki, keçmiş məlumat qalmasın
                 for (i in 1..document.numberOfPages) {
+                    val stripper = PDFTextStripper()
                     stripper.startPage = i
                     stripper.endPage = i
                     val text = stripper.getText(document)
@@ -98,7 +106,7 @@ class PdfViewerActivity : BaseViewerActivity() {
 
                 withContext(Dispatchers.Main) {
                     if (foundPage != -1) {
-                        pdfView.jumpTo(foundPage - 1, true)
+                        pdfView.jumpTo(foundPage - 1, true) // jumpTo 0-dan başlayır
                         Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_SHORT).show()
