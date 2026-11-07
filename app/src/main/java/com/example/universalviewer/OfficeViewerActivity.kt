@@ -25,7 +25,6 @@ import java.io.InputStream
 
 class OfficeViewerActivity : BaseViewerActivity() {
     private lateinit var webView: WebView
-    private var currentFontSizeLevel = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,11 +53,11 @@ class OfficeViewerActivity : BaseViewerActivity() {
                 try {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
-                        val fileName = DocumentRouterHelper.getFileName(this@OfficeViewerActivity, uri).lowercase()
+                        val fileName = intent.getStringExtra("FILE_NAME")?.lowercase() ?: ""
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
-                        if (bytes.size > 20 * 1024 * 1024) { // 20 MB limit
+                        if (bytes.size > 20 * 1024 * 1024) {
                             withContext(Dispatchers.Main) {
                                 container.removeView(progressBar)
                                 Toast.makeText(this@OfficeViewerActivity, "Fayl çox böyükdür (Maks 20MB)", Toast.LENGTH_LONG).show()
@@ -91,17 +90,9 @@ class OfficeViewerActivity : BaseViewerActivity() {
                                         val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     }
-                                    
-                                    applyFontSizeToWebView()
                                 }
                             }
                         }
-                    }
-                } catch (e: OutOfMemoryError) {
-                     withContext(Dispatchers.Main) {
-                        container.removeView(progressBar)
-                        Toast.makeText(this@OfficeViewerActivity, "Yaddaş kifayət etmir (Fayl çox böyükdür).", Toast.LENGTH_LONG).show()
-                        finish()
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -174,16 +165,5 @@ class OfficeViewerActivity : BaseViewerActivity() {
             }
             .setNegativeButton("Ləğv et", null)
             .show()
-    }
-
-    override fun onFontSizeChange(level: Int) {
-        currentFontSizeLevel = level
-        applyFontSizeToWebView()
-    }
-
-    private fun applyFontSizeToWebView() {
-        // -2, -1, 0, 1, 2 dəyərlərini pikselə çeviririk (12px - 24px arası)
-        val newSize = 16 + (currentFontSizeLevel * 2)
-        webView.evaluateJavascript("setFontSize($newSize);", null)
     }
 }
