@@ -10,26 +10,18 @@ class PreferenceManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("UniversalViewerPrefs", Context.MODE_PRIVATE)
 
-    // ==================== USAGE TIME ====================
-    fun addUsageTime(millis: Long) {
+    // ==================== SƏNƏDİN OXUNMA VAXTI ====================
+    fun addDocumentUsageTime(uriString: String, millis: Long) {
         if (millis <= 0) return
-        val total = prefs.getLong("usage_time", 0) + millis
-        prefs.edit().putLong("usage_time", total).apply()
+        val list = getDocumentList().toMutableList()
+        val index = list.indexOfFirst { it.uri == uriString }
+        if (index != -1) {
+            list[index].timeSpentMs += millis
+            prefs.edit().putString("document_list", Gson().toJson(list)).apply()
+        }
     }
 
-    fun getTotalUsageTime(): String {
-        val totalMillis = prefs.getLong("usage_time", 0)
-        val minutes = (totalMillis / 1000) / 60
-        return "$minutes dəqiqə"
-    }
-
-    fun getTotalUsageMs(): Long = prefs.getLong("usage_time", 0)
-
-    fun resetUsageTime() {
-        prefs.edit().putLong("usage_time", 0L).apply()
-    }
-
-    // ==================== RECENT FILES ====================
+    // ==================== SON SƏNƏDLƏR (RECENT) ====================
     fun saveRecentFile(uri: Uri, fileName: String) {
         val list = getDocumentList().toMutableList()
         val uriString = uri.toString()
@@ -94,7 +86,7 @@ class PreferenceManager(context: Context) {
         prefs.edit().remove("document_list").apply()
     }
 
-    // ==================== FONT SIZE ====================
+    // ==================== ŞRİFİT ÖLÇÜSÜ ====================
     // -2 = Daha Kiçik, -1 = Kiçik, 0 = Standart, 1 = Böyük, 2 = Daha Böyük
     fun getFontSize(): Int = prefs.getInt("font_size", 0)
 
