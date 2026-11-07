@@ -2,10 +2,12 @@ package com.example.universalviewer.ui
 
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -13,12 +15,20 @@ import com.example.universalviewer.PreferenceManager
 import com.example.universalviewer.databinding.FragmentHomeBinding
 import com.example.universalviewer.databinding.ItemCategoryBinding
 import com.example.universalviewer.databinding.ItemToolBinding
+import com.example.universalviewer.utils.DocumentRouter
 
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var prefManager: PreferenceManager
+
+    // Fayl seçmə pəncərəsi
+    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            DocumentRouter.routeFile(requireContext(), uri)
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -34,13 +44,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupCategories() {
-        val docs = prefManager.getDocumentList()
+        val docs = prefManager.getDocumentList() // DÜZƏLİŞ: getDocuments() -> getDocumentList()
         
         val pdfCount = docs.count { it.fileName.endsWith(".pdf", true) }
-        val wordCount = docs.count { it.fileName.endsWith(".docx", true) }
-        val excelCount = docs.count { it.fileName.endsWith(".xlsx", true) }
-        val pptCount = docs.count { it.fileName.endsWith(".pptx", true) }
-        val txtCount = docs.count { it.fileName.endsWith(".txt", true) }
+        val wordCount = docs.count { it.fileName.endsWith(".docx", true) || it.fileName.endsWith(".doc", true) }
+        val excelCount = docs.count { it.fileName.endsWith(".xlsx", true) || it.fileName.endsWith(".xls", true) }
+        val pptCount = docs.count { it.fileName.endsWith(".pptx", true) || it.fileName.endsWith(".ppt", true) }
+        val txtCount = docs.count { it.fileName.endsWith(".txt", true) || it.fileName.endsWith(".html", true) }
 
         val categories = listOf(
             CategoryItem("All", docs.size, android.R.drawable.ic_menu_sort_by_size, "#2979FF"),
@@ -52,7 +62,18 @@ class HomeFragment : Fragment() {
         )
 
         binding.rvCategories.layoutManager = GridLayoutManager(requireContext(), 2)
-        binding.rvCategories.adapter = CategoryAdapter(categories)
+        binding.rvCategories.adapter = CategoryAdapter(categories) { categoryName ->
+            // Klikləyəndə fayl seçmə pəncərəsini aç
+            val mimeTypes = when(categoryName) {
+                "PDF" -> arrayOf("application/pdf")
+                "Word" -> arrayOf("application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                "Excel" -> arrayOf("application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                "PPT" -> arrayOf("application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+                "TXT" -> arrayOf("text/plain", "text/html")
+                else -> arrayOf("*/*")
+            }
+            filePickerLauncher.launch(mimeTypes)
+        }
     }
 
     private fun setupTools() {
@@ -74,7 +95,10 @@ class HomeFragment : Fragment() {
     data class CategoryItem(val name: String, val count: Int, val iconRes: Int, val colorHex: String)
     data class ToolItem(val name: String, val iconRes: Int, val colorHex: String)
 
-    inner class CategoryAdapter(private val items: List<CategoryItem>) : RecyclerView.Adapter<CategoryAdapter.ViewHolder>() {
+    inner class CategoryAdapter(
+        private val items: List<CategoryItem>,
+        private val onClick: (String) -> Unit
+    ) : RecyclerView.Adapter<CategoryAdapter.ViewHolder>() {
         inner class ViewHolder(val binding: ItemCategoryBinding) : RecyclerView.ViewHolder(binding.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -87,6 +111,7 @@ class HomeFragment : Fragment() {
             holder.binding.tvCategoryCount.text = "${item.count} files"
             holder.binding.ivCategoryIcon.setImageResource(item.iconRes)
             holder.binding.ivCategoryIcon.setColorFilter(Color.parseColor(item.colorHex), PorterDuff.Mode.SRC_IN)
+            holder.binding.root.setOnClickListener { onClick(item.name) }
         }
 
         override fun getItemCount() = items.size
