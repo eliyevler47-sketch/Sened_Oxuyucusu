@@ -18,7 +18,10 @@ class MainActivity : AppCompatActivity() {
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
-        binding.bottomNav.setupWithNavController(navHostFragment.navController)
+        val navController = navHostFragment.navController
+        
+        // Aşağı menyunu NavController ilə bağlayırıq
+        binding.bottomNav.setupWithNavController(navController)
 
         handleIncomingIntent(intent)
     }
