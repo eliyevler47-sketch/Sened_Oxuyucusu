@@ -5,11 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
-import com.example.universalviewer.HtmlViewerActivity
-import com.example.universalviewer.ImageViewerActivity
-import com.example.universalviewer.OfficeViewerActivity
-import com.example.universalviewer.PdfViewerActivity
-import com.example.universalviewer.PreferenceManager
+import com.example.universalviewer.*
 
 object DocumentRouter {
     
@@ -34,34 +30,45 @@ object DocumentRouter {
 
         val mimeType = context.contentResolver.getType(uri)
         
-        when {
-            mimeType?.contains("pdf") == true || fileName.lowercase().endsWith(".pdf") -> {
-                context.startActivity(Intent(context, PdfViewerActivity::class.java).apply { 
-                    data = uri
-                    putExtra("FILE_NAME", fileName) 
-                })
+        // BÜTÜN INTENTLƏRƏ İCAZƏ FLAG-I ƏLAVƏ EDİRİK (CRASH-İN QARŞISINI ALIR)
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+
+        try {
+            when {
+                mimeType?.contains("pdf") == true || fileName.lowercase().endsWith(".pdf") -> {
+                    context.startActivity(Intent(context, PdfViewerActivity::class.java).apply { 
+                        data = uri
+                        addFlags(flags)
+                        putExtra("FILE_NAME", fileName) 
+                    })
+                }
+                fileName.lowercase().endsWith(".docx") || fileName.lowercase().endsWith(".xlsx") || fileName.lowercase().endsWith(".pptx") -> {
+                    context.startActivity(Intent(context, OfficeViewerActivity::class.java).apply { 
+                        data = uri
+                        addFlags(flags)
+                        putExtra("FILE_NAME", fileName) 
+                    })
+                }
+                mimeType?.contains("html") == true || mimeType?.contains("text") == true || fileName.lowercase().endsWith(".txt") -> {
+                    context.startActivity(Intent(context, HtmlViewerActivity::class.java).apply { 
+                        data = uri
+                        addFlags(flags)
+                        putExtra("FILE_NAME", fileName) 
+                    })
+                }
+                mimeType?.startsWith("image/") == true -> {
+                    context.startActivity(Intent(context, ImageViewerActivity::class.java).apply { 
+                        data = uri
+                        addFlags(flags)
+                        putExtra("FILE_NAME", fileName) 
+                    })
+                }
+                else -> {
+                    Toast.makeText(context, "Bu fayl növü dəstəklənmir.", Toast.LENGTH_SHORT).show()
+                }
             }
-            fileName.lowercase().endsWith(".docx") || fileName.lowercase().endsWith(".xlsx") || fileName.lowercase().endsWith(".pptx") -> {
-                context.startActivity(Intent(context, OfficeViewerActivity::class.java).apply { 
-                    data = uri
-                    putExtra("FILE_NAME", fileName) 
-                })
-            }
-            mimeType?.contains("html") == true || mimeType?.contains("text") == true || fileName.lowercase().endsWith(".txt") -> {
-                context.startActivity(Intent(context, HtmlViewerActivity::class.java).apply { 
-                    data = uri
-                    putExtra("FILE_NAME", fileName) 
-                })
-            }
-            mimeType?.startsWith("image/") == true -> {
-                context.startActivity(Intent(context, ImageViewerActivity::class.java).apply { 
-                    data = uri
-                    putExtra("FILE_NAME", fileName) 
-                })
-            }
-            else -> {
-                Toast.makeText(context, "Bu fayl növü dəstəklənmir.", Toast.LENGTH_SHORT).show()
-            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Fayl açılarkən xəta: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 }
