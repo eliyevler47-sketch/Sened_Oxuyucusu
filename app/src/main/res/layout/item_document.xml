@@ -4,9 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
+    android:clickable="true"
+    android:focusable="true"
     app:cardBackgroundColor="@color/bg_surface"
     app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
+    app:rippleColor="#33FF5722"
     app:strokeColor="@color/bg_surface_light"
     app:strokeWidth="1dp">
 
@@ -27,28 +30,46 @@
             app:layout_constraintTop_toTopOf="parent"
             app:tint="@color/accent_orange" />
 
-        <TextView
-            android:id="@+id/tvFileName"
+        <LinearLayout
+            android:id="@+id/textContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="8dp"
-            android:ellipsize="middle"
-            android:maxLines="1"
-            android:text="Sənəd adı"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold"
+            android:orientation="vertical"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/btnFavorite"
             app:layout_constraintStart_toEndOf="@+id/ivIcon"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/tvFileName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:maxLines="1"
+                android:text="Sənəd adı"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvLastOpened"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:text="indi"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
 
         <ImageButton
             android:id="@+id/btnFavorite"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Favori"
             android:src="@android:drawable/btn_star"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/btnPin"
@@ -60,6 +81,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Pin"
             android:src="@android:drawable/ic_menu_mylocation"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
