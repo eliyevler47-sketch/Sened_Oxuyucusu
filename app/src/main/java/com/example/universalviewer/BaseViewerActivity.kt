@@ -12,11 +12,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 abstract class BaseViewerActivity : AppCompatActivity() {
     protected lateinit var prefManager: PreferenceManager
     private var startTime: Long = 0
+    private var currentUriString: String? = null
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             DocumentRouter.routeFile(this, uri)
-            finish() // Yeni fayl açıldıqda köhnə pəncərəni bağla
+            finish() 
         }
     }
 
@@ -25,6 +26,7 @@ abstract class BaseViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_viewer) 
         
         prefManager = PreferenceManager(this)
+        currentUriString = intent.data?.toString()
         
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.inflateMenu(R.menu.viewer_menu)
@@ -48,7 +50,6 @@ abstract class BaseViewerActivity : AppCompatActivity() {
         val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
         fab.setOnClickListener { showSettingsDialog() }
 
-        // Şrift ölçüsünü ilkin olaraq tətbiq et
         onFontSizeChange(prefManager.getFontSize())
     }
 
@@ -59,8 +60,10 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        if (startTime > 0) {
-            prefManager.addUsageTime(System.currentTimeMillis() - startTime)
+        // Xüsusi SƏNƏD ÜÇÜN vaxtı yadda saxlayırıq
+        if (startTime > 0 && currentUriString != null) {
+            val timeSpent = System.currentTimeMillis() - startTime
+            prefManager.addDocumentUsageTime(currentUriString!!, timeSpent)
             startTime = 0
         }
     }
@@ -71,19 +74,18 @@ abstract class BaseViewerActivity : AppCompatActivity() {
             "➕ Şrifti Böyüt",
             "🔄 Standart Şrift",
             "➖ Şrifti Kiçilt",
-            "➖ Şrifti Daha da Kiçilt",
-            "⏱️ Sərf Edilən Vaxt: ${prefManager.getTotalUsageTime()}"
+            "➖ Şrifti Daha da Kiçilt"
         )
 
         android.app.AlertDialog.Builder(this)
             .setTitle("Sənəd Parametrləri")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> changeFontSize(2) // +2
-                    1 -> changeFontSize(1) // +1
-                    2 -> changeFontSize(0) // Standard
-                    3 -> changeFontSize(-1)// -1
-                    4 -> changeFontSize(-2)// -2
+                    0 -> changeFontSize(2) 
+                    1 -> changeFontSize(1) 
+                    2 -> changeFontSize(0) 
+                    3 -> changeFontSize(-1)
+                    4 -> changeFontSize(-2)
                 }
             }.show()
     }
@@ -93,6 +95,5 @@ abstract class BaseViewerActivity : AppCompatActivity() {
         onFontSizeChange(level)
     }
 
-    // Hər viewer özünə uyğun şrift/zoom dəyişikliyini edəcək
     abstract fun onFontSizeChange(level: Int)
 }
