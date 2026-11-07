@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
@@ -54,8 +55,19 @@ class OfficeViewerActivity : BaseViewerActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = DocumentRouterHelper.getFileName(this@OfficeViewerActivity, uri).lowercase()
+                        
+                        // Fayl ölçüsünü yoxlayırıq (Çökmənin qarşısını almaq üçün)
                         val bytes = inputStream.readBytes()
                         inputStream.close()
+
+                        if (bytes.size > 20 * 1024 * 1024) { // 20 MB-dan böyükdürsə
+                            withContext(Dispatchers.Main) {
+                                container.removeView(progressBar)
+                                Toast.makeText(this@OfficeViewerActivity, "Fayl çox böyükdür (Maks 20MB)", Toast.LENGTH_LONG).show()
+                                finish()
+                            }
+                            return@launch
+                        }
 
                         withContext(Dispatchers.Main) {
                             container.removeView(progressBar)
@@ -82,11 +94,16 @@ class OfficeViewerActivity : BaseViewerActivity() {
                                         webView.evaluateJavascript("renderHtml('$base64Html');", null)
                                     }
                                     
-                                    // Sənəd yükləndikdən sonra şrift ölçüsünü tətbiq et
                                     applyFontSizeToWebView()
                                 }
                             }
                         }
+                    }
+                } catch (e: OutOfMemoryError) {
+                     withContext(Dispatchers.Main) {
+                        container.removeView(progressBar)
+                        Toast.makeText(this@OfficeViewerActivity, "Yaddaş kifayət etmir (Fayl çox böyükdür).", Toast.LENGTH_LONG).show()
+                        finish()
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
@@ -167,8 +184,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
     }
 
     private fun applyFontSizeToWebView() {
-        // Base ölçü 16px-dir. Hər level 2px dəyişir.
-        // -2 = 12px, -1 = 14px, 0 = 16px, 1 = 18px, 2 = 20px
         val newSize = 16 + (currentFontSizeLevel * 2)
         webView.evaluateJavascript("document.body.style.fontSize='${newSize}px';", null)
     }
