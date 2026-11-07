@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.universalviewer.DocumentItem
@@ -19,6 +20,12 @@ class RecentFragment : Fragment() {
     private lateinit var prefManager: PreferenceManager
     private lateinit var adapter: RecentAdapter
 
+    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            DocumentRouter.routeFile(requireContext(), uri)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -31,7 +38,7 @@ class RecentFragment : Fragment() {
         prefManager = PreferenceManager(requireContext())
 
         adapter = RecentAdapter(
-            onOpen = { item -> openDocument(item) },
+            onOpen = { item -> DocumentRouter.routeFile(requireContext(), Uri.parse(item.uri)) },
             onPin = { item ->
                 prefManager.togglePin(item.uri)
                 loadData()
@@ -48,6 +55,11 @@ class RecentFragment : Fragment() {
 
         binding.recyclerRecent.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerRecent.adapter = adapter
+
+        // Boş ekrana basanda fayl seçmə pəncərəsini aç
+        binding.emptyState.setOnClickListener {
+            filePickerLauncher.launch(arrayOf("*/*"))
+        }
     }
 
     override fun onResume() {
@@ -65,10 +77,6 @@ class RecentFragment : Fragment() {
             binding.recyclerRecent.visibility = View.VISIBLE
         }
         adapter.submitList(list)
-    }
-
-    private fun openDocument(item: DocumentItem) {
-        DocumentRouter.routeFile(requireContext(), Uri.parse(item.uri))
     }
 
     override fun onDestroyView() {
