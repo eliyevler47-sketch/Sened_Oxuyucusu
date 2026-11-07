@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.example.universalviewer.utils.DocumentRouter
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
@@ -14,12 +15,8 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            // YENİ SƏNƏD AÇANDA ADINI DÜZGÜN ÖTÜRÜRÜK
-            val fileName = getFileName(uri)
-            prefManager.saveRecentFile(uri, fileName)
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
+            DocumentRouter.routeFile(this, uri)
+            finish() // Yeni fayl açıldıqda köhnə pəncərəni bağla
         }
     }
 
@@ -50,6 +47,9 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
         val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
         fab.setOnClickListener { showSettingsDialog() }
+
+        // Şrift ölçüsünü ilkin olaraq tətbiq et
+        onFontSizeChange(prefManager.getFontSize())
     }
 
     override fun onResume() {
@@ -61,14 +61,17 @@ abstract class BaseViewerActivity : AppCompatActivity() {
         super.onPause()
         if (startTime > 0) {
             prefManager.addUsageTime(System.currentTimeMillis() - startTime)
+            startTime = 0
         }
     }
 
     private fun showSettingsDialog() {
         val options = arrayOf(
-            "🔤 Şrifti Böyüt",
-            "🔤 Şrifti Kiçilt",
-            "🔤 Standart Şrift",
+            "➕ Şrifti Daha da Böyüt",
+            "➕ Şrifti Böyüt",
+            "🔄 Standart Şrift",
+            "➖ Şrifti Kiçilt",
+            "➖ Şrifti Daha da Kiçilt",
             "⏱️ Sərf Edilən Vaxt: ${prefManager.getTotalUsageTime()}"
         )
 
@@ -76,22 +79,20 @@ abstract class BaseViewerActivity : AppCompatActivity() {
             .setTitle("Sənəd Parametrləri")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> onFontSizeChange(2)
-                    1 -> onFontSizeChange(-2)
-                    2 -> onFontSizeChange(0)
+                    0 -> changeFontSize(2) // +2
+                    1 -> changeFontSize(1) // +1
+                    2 -> changeFontSize(0) // Standard
+                    3 -> changeFontSize(-1)// -1
+                    4 -> changeFontSize(-2)// -2
                 }
             }.show()
     }
 
-    abstract fun onFontSizeChange(change: Int)
-    
-    // Köməkçi funksiya (Base daxilində)
-    private fun getFileName(uri: Uri): String {
-        var result: String? = null
-        if (uri.scheme == "content") {
-            val cursor = contentResolver.query(uri, null, null, null, null)
-            try { if (cursor != null && cursor.moveToFirst()) { val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME); if (index != -1) result = cursor.getString(index) } } finally { cursor?.close() }
-        }
-        return result ?: "Yeni Sənəd"
+    private fun changeFontSize(level: Int) {
+        prefManager.setFontSize(level)
+        onFontSizeChange(level)
     }
+
+    // Hər viewer özünə uyğun şrift/zoom dəyişikliyini edəcək
+    abstract fun onFontSizeChange(level: Int)
 }
