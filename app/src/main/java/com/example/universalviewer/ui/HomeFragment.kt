@@ -1,11 +1,8 @@
 package com.example.universalviewer.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -26,7 +22,6 @@ import com.example.universalviewer.databinding.ItemCategoryBinding
 import com.example.universalviewer.databinding.ItemToolBinding
 import com.example.universalviewer.utils.DocumentRouter
 import java.io.File
-import java.io.FileOutputStream
 
 class HomeFragment : Fragment() {
 
@@ -37,29 +32,6 @@ class HomeFragment : Fragment() {
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
             DocumentRouter.routeFile(requireContext(), uri)
-        }
-    }
-
-    // Şəkil seçib PDF-ə çevirmək üçün
-    private val imageToPdfLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            convertImageToPdf(uri)
-        }
-    }
-
-    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
-        if (success) {
-            Toast.makeText(requireContext(), "Şəkil çəkildi!", Toast.LENGTH_SHORT).show()
-        }
-    }
-    private var currentPhotoUri: Uri? = null
-
-    // Kamera icazəsi istəmək üçün
-    private val requestCameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) {
-            openCamera()
-        } else {
-            Toast.makeText(requireContext(), "Kamera üçün icazə verilmədi.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -110,7 +82,7 @@ class HomeFragment : Fragment() {
 
     private fun setupTools() {
         val tools = listOf(
-            ToolItem("Scan", android.R.drawable.ic_menu_camera, "#00C853"),
+            ToolItem("Open", android.R.drawable.ic_menu_add, "#00C853"),
             ToolItem("Recent", android.R.drawable.ic_menu_recent_history, "#2979FF"),
             ToolItem("Convert", android.R.drawable.ic_menu_send, "#FF5722"),
             ToolItem("Share", android.R.drawable.ic_menu_share, "#FF5722")
@@ -118,53 +90,14 @@ class HomeFragment : Fragment() {
         binding.rvTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvTools.adapter = ToolAdapter(tools) { toolName ->
             when(toolName) {
-                "Scan" -> {
-                    if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                        openCamera()
-                    } else {
-                        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                    }
+                "Open" -> filePickerLauncher.launch(arrayOf("*/*"))
+                "Recent" -> {
+                    // Naviqasiya xətası həll edildi
+                    findNavController().navigate(R.id.nav_recent)
                 }
-                "Recent" -> findNavController().navigate(R.id.nav_recent)
-                "Convert" -> imageToPdfLauncher.launch(arrayOf("image/*")) // Şəkil seçib PDF edir
+                "Convert" -> Toast.makeText(requireContext(), "Şəkil çevirmə funksiyası tezliklə!", Toast.LENGTH_SHORT).show()
                 "Share" -> shareApp()
             }
-        }
-    }
-
-    private fun openCamera() {
-        try {
-            val photoFile = File.createTempFile("scan_", ".jpg", requireContext().cacheDir)
-            currentPhotoUri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.provider",
-                photoFile
-            )
-            takePictureLauncher.launch(currentPhotoUri)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Kamera xətası: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // Şəkli PDF-ə çevirən real funksiya
-    private fun convertImageToPdf(imageUri: Uri) {
-        try {
-            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(requireContext().contentResolver, imageUri)
-            val pdfDocument = PdfDocument()
-            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, 1).create()
-            val page = pdfDocument.startPage(pageInfo)
-            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
-            pdfDocument.finishPage(page)
-
-            val pdfFile = File(requireContext().cacheDir, "converted_${System.currentTimeMillis()}.pdf")
-            pdfDocument.writeTo(FileOutputStream(pdfFile))
-            pdfDocument.close()
-
-            val pdfUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
-            Toast.makeText(requireContext(), "PDF yaradıldı!", Toast.LENGTH_SHORT).show()
-            DocumentRouter.routeFile(requireContext(), pdfUri)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Çevirmə xətası: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
