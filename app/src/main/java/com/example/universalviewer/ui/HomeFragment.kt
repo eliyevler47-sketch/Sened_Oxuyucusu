@@ -5,11 +5,15 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 import android.net.Uri
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -18,6 +22,9 @@ import com.example.universalviewer.databinding.FragmentHomeBinding
 import com.example.universalviewer.databinding.ItemCategoryBinding
 import com.example.universalviewer.databinding.ItemToolBinding
 import com.example.universalviewer.utils.DocumentRouter
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HomeFragment : Fragment() {
 
@@ -30,6 +37,14 @@ class HomeFragment : Fragment() {
             DocumentRouter.routeFile(requireContext(), uri)
         }
     }
+
+    // Kamera üçün launcher (Scan)
+    private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
+        if (success) {
+            Toast.makeText(requireContext(), "Şəkil çəkildi! Tezliklə OCR əlavə olunacaq.", Toast.LENGTH_LONG).show()
+        }
+    }
+    private var currentPhotoUri: Uri? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -86,16 +101,67 @@ class HomeFragment : Fragment() {
         binding.rvTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvTools.adapter = ToolAdapter(tools) { toolName ->
             when(toolName) {
-                "Share" -> {
-                    val sendIntent = Intent().apply {
-                        action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, "Universal Viewer tətbiqini yoxla! Bütün sənədləri bir yerdə oxu.")
-                        type = "text/plain"
-                    }
-                    startActivity(Intent.createChooser(sendIntent, "Paylaş"))
-                }
-                else -> Toast.makeText(requireContext(), "$toolName funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
+                "Scan" -> openCamera()
+                "Create" -> showCreateFileDialog()
+                "Convert" -> Toast.makeText(requireContext(), "Fayl çevirmə funksiyası tezliklə!", Toast.LENGTH_SHORT).show()
+                "Share" -> shareApp()
             }
+        }
+    }
+
+    private fun openCamera() {
+        try {
+            val photoFile = File.createTempFile("scan_", ".jpg", requireContext().cacheDir)
+            currentPhotoUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.provider",
+                photoFile
+            )
+            takePictureLauncher.launch(currentPhotoUri)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Kamera xətası: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showCreateFileDialog() {
+        val input = EditText(requireContext()).apply {
+            hint = "Fayl adı (məs: qeyd)"
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("Yeni TXT Faylı Yarat")
+            .setView(input)
+            .setPositiveButton("Yarat") { _, _ ->
+                val fileName = input.text.toString().trim()
+                if (fileName.isNotEmpty()) {
+                    try {
+                        val file = File(requireContext().getExternalFilesDir(null), "$fileName.txt")
+                        file.writeText("Bu fayl Universal Viewer ilə yaradıldı.\n\nTarix: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())}")
+                        val uri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", file)
+                        DocumentRouter.routeFile(requireContext(), uri)
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Ləğv et", null)
+            .show()
+    }
+
+    private fun shareApp() {
+        try {
+            val appInfo = requireContext().packageManager.getApplicationInfo(requireContext().packageName, 0)
+            val apkFile = File(appInfo.publicSourceDir)
+            val apkUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", apkFile)
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_STREAM, apkUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Tətbiqi Paylaş"))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Paylaşma xətası: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
