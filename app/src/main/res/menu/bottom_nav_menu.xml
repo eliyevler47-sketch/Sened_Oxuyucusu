@@ -3,11 +3,11 @@
     <item
         android:id="@+id/nav_home"
         android:icon="@android:drawable/ic_menu_compass"
-        android:title="Home" />
+        android:title="All Files" />
     <item
-        android:id="@+id/nav_recent"
-        android:icon="@android:drawable/ic_menu_recent_history"
-        android:title="Recent" />
+        android:id="@+id/nav_tools"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="Tools" />
     <item
         android:id="@+id/nav_settings"
         android:icon="@android:drawable/ic_menu_preferences"
