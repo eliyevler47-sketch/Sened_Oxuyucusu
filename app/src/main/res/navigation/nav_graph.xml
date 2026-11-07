@@ -5,6 +5,6 @@
     app:startDestination="@id/nav_home">
 
     <fragment android:id="@+id/nav_home" android:name="com.example.universalviewer.ui.HomeFragment" />
-    <fragment android:id="@+id/nav_recent" android:name="com.example.universalviewer.ui.RecentFragment" />
+    <fragment android:id="@+id/nav_tools" android:name="com.example.universalviewer.ui.ToolsFragment" />
     <fragment android:id="@+id/nav_settings" android:name="com.example.universalviewer.ui.SettingsFragment" />
 </navigation>
