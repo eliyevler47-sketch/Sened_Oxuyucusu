@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 
 class HtmlViewerActivity : BaseViewerActivity() {
     private lateinit var webView: WebView
+    private var currentFontLevel = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +37,6 @@ class HtmlViewerActivity : BaseViewerActivity() {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     if (fileName.endsWith(".txt", true)) {
-                        // TXT faylını oxuyub HTML formatına salırıq
                         val inputStream = contentResolver.openInputStream(uri)
                         val text = inputStream?.bufferedReader()?.use { it.readText() } ?: ""
                         inputStream?.close()
@@ -47,8 +47,8 @@ class HtmlViewerActivity : BaseViewerActivity() {
                             <head>
                                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                                 <style>
-                                    body { background-color: #E0E0E0; padding: 15px; font-family: sans-serif; }
-                                    .paper { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); color: #333; white-space: pre-wrap; line-height: 1.6; font-size: 16px; }
+                                    body { background-color: #E0E0E0; padding: 15px; font-family: sans-serif; font-size: 16px;}
+                                    .paper { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); color: #333; white-space: pre-wrap; line-height: 1.6; }
                                 </style>
                             </head>
                             <body>
@@ -59,9 +59,9 @@ class HtmlViewerActivity : BaseViewerActivity() {
 
                         withContext(Dispatchers.Main) {
                             webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                            applyFontSize()
                         }
                     } else {
-                        // HTML faylıdırsa birbaşa yükləyirik
                         withContext(Dispatchers.Main) {
                             webView.loadUrl(uri.toString())
                         }
@@ -76,7 +76,12 @@ class HtmlViewerActivity : BaseViewerActivity() {
     }
 
     override fun onFontSizeChange(level: Int) {
-        val newSize = 16 + (level * 2)
+        currentFontLevel = level
+        applyFontSize()
+    }
+
+    private fun applyFontSize() {
+        val newSize = 16 + (currentFontLevel * 2)
         webView.evaluateJavascript("document.body.style.fontSize='${newSize}px';", null)
     }
 }
