@@ -128,33 +128,46 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
                     <RadioButton
-                        android:id="@+id/radioSmall"
-                        android:layout_width="0dp"
+                        android:id="@+id/radioSmall2"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:buttonTint="@color/accent_orange"
-                        android:text="Kiçik"
+                        android:text="Daha Kiçik (-2)"
                         android:textColor="@color/text_primary" />
 
                     <RadioButton
-                        android:id="@+id/radioMedium"
-                        android:layout_width="0dp"
+                        android:id="@+id/radioSmall1"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:buttonTint="@color/accent_orange"
-                        android:text="Orta"
+                        android:text="Kiçik (-1)"
                         android:textColor="@color/text_primary" />
 
                     <RadioButton
-                        android:id="@+id/radioLarge"
-                        android:layout_width="0dp"
+                        android:id="@+id/radioStandard"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:buttonTint="@color/accent_orange"
-                        android:text="Böyük"
+                        android:text="Standart (0)"
+                        android:textColor="@color/text_primary" />
+
+                    <RadioButton
+                        android:id="@+id/radioLarge1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:buttonTint="@color/accent_orange"
+                        android:text="Böyük (+1)"
+                        android:textColor="@color/text_primary" />
+
+                    <RadioButton
+                        android:id="@+id/radioLarge2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:buttonTint="@color/accent_orange"
+                        android:text="Daha Böyük (+2)"
                         android:textColor="@color/text_primary" />
                 </RadioGroup>
             </LinearLayout>
