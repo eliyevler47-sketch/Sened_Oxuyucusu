@@ -7,7 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.universalviewer.utils.DocumentRouter
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 abstract class BaseViewerActivity : AppCompatActivity() {
     protected lateinit var prefManager: PreferenceManager
@@ -26,7 +25,7 @@ abstract class BaseViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_viewer) 
         
         prefManager = PreferenceManager(this)
-        currentUriString = intent.data?.toString()
+        currentUriString = intent.getStringExtra("FILE_NAME")
         
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.inflateMenu(R.menu.viewer_menu)
@@ -46,11 +45,6 @@ abstract class BaseViewerActivity : AppCompatActivity() {
             }
         }
         toolbar.setNavigationOnClickListener { finish() }
-
-        val fab = findViewById<FloatingActionButton>(R.id.fabSettings)
-        fab.setOnClickListener { showSettingsDialog() }
-
-        onFontSizeChange(prefManager.getFontSize())
     }
 
     override fun onResume() {
@@ -60,40 +54,10 @@ abstract class BaseViewerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Xüsusi SƏNƏD ÜÇÜN vaxtı yadda saxlayırıq
         if (startTime > 0 && currentUriString != null) {
             val timeSpent = System.currentTimeMillis() - startTime
             prefManager.addDocumentUsageTime(currentUriString!!, timeSpent)
             startTime = 0
         }
     }
-
-    private fun showSettingsDialog() {
-        val options = arrayOf(
-            "➕ Şrifti Daha da Böyüt",
-            "➕ Şrifti Böyüt",
-            "🔄 Standart Şrift",
-            "➖ Şrifti Kiçilt",
-            "➖ Şrifti Daha da Kiçilt"
-        )
-
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Sənəd Parametrləri")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> changeFontSize(2) 
-                    1 -> changeFontSize(1) 
-                    2 -> changeFontSize(0) 
-                    3 -> changeFontSize(-1)
-                    4 -> changeFontSize(-2)
-                }
-            }.show()
-    }
-
-    private fun changeFontSize(level: Int) {
-        prefManager.setFontSize(level)
-        onFontSizeChange(level)
-    }
-
-    abstract fun onFontSizeChange(level: Int)
 }
