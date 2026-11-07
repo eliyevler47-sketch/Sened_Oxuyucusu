@@ -70,17 +70,22 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setupFontSize() {
+        // Yeni 5 səviyyəli sistem: -2, -1, 0, 1, 2
         when (prefManager.getFontSize()) {
-            0 -> binding.radioSmall.isChecked = true
-            2 -> binding.radioLarge.isChecked = true
-            else -> binding.radioMedium.isChecked = true
+            -2 -> binding.radioSmall2.isChecked = true
+            -1 -> binding.radioSmall1.isChecked = true
+            1 -> binding.radioLarge1.isChecked = true
+            2 -> binding.radioLarge2.isChecked = true
+            else -> binding.radioStandard.isChecked = true
         }
 
         binding.radioGroupFont.setOnCheckedChangeListener { _, checkedId ->
             val value = when (checkedId) {
-                R.id.radioSmall -> 0
-                R.id.radioLarge -> 2
-                else -> 1
+                R.id.radioSmall2 -> -2
+                R.id.radioSmall1 -> -1
+                R.id.radioLarge1 -> 1
+                R.id.radioLarge2 -> 2
+                else -> 0
             }
             prefManager.setFontSize(value)
         }
