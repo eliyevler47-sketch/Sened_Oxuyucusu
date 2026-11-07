@@ -26,7 +26,6 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         prefManager = PreferenceManager(requireContext())
 
-        setupFontSizeSlider()
         setupRecentSettings()
         setupAbout()
     }
@@ -36,28 +35,11 @@ class SettingsFragment : Fragment() {
         binding.tvRecentCount.text = "${prefManager.getDocumentList().size} fayl"
     }
 
-    private fun setupFontSizeSlider() {
-        // -2, -1, 0, 1, 2 dəyərlərini 0, 1, 2, 3, 4 ilə əlaqələndiririk
-        val currentLevel = prefManager.getFontSize()
-        binding.seekBarFont.progress = currentLevel + 2
-
-        binding.seekBarFont.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val newLevel = progress - 2
-                    prefManager.setFontSize(newLevel)
-                }
-            }
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
-        })
-    }
-
     private fun setupRecentSettings() {
         binding.btnClearRecent.setOnClickListener {
             AlertDialog.Builder(requireContext())
                 .setTitle("Son sənədləri təmizlə")
-                .setMessage("Bütün son açılan sənədlər və onların oxunma statistikası silinəcək. Davam edilsin?")
+                .setMessage("Bütün son açılan sənədlər silinəcək. Davam edilsin?")
                 .setPositiveButton("Bəli") { _, _ ->
                     prefManager.clearRecent()
                     binding.tvRecentCount.text = "0 fayl"
