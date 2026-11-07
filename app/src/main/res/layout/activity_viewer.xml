@@ -22,23 +22,11 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Sənədin yerləşəcəyi sahə -->
     <LinearLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-
-    <!-- Sağ aşağıda peşəkar düymə (Seçimlər üçün) -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabSettings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="24dp"
-        android:src="@android:drawable/ic_menu_preferences"
-        app:backgroundTint="#1E1B4B"
-        app:tint="#FFFFFF" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
