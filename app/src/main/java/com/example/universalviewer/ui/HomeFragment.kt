@@ -34,7 +34,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupCategories() {
-        val docs = prefManager.getDocuments()
+        val docs = prefManager.getDocumentList()
         
         val pdfCount = docs.count { it.fileName.endsWith(".pdf", true) }
         val wordCount = docs.count { it.fileName.endsWith(".docx", true) }
