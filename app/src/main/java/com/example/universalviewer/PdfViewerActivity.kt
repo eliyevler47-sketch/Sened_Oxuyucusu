@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import com.github.barteksc.pdfviewer.PDFView
 import com.google.android.material.appbar.MaterialToolbar
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
@@ -16,7 +17,6 @@ import com.tom_roush.pdfbox.text.PDFTextStripper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.lifecycle.lifecycleScope
 import java.io.File
 
 class PdfViewerActivity : BaseViewerActivity() {
@@ -26,14 +26,13 @@ class PdfViewerActivity : BaseViewerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // PDFBOX KİTABXANASINI İLKİNLƏŞDİRİRİK
         PDFBoxResourceLoader.init(applicationContext)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = intent.getStringExtra("FILE_NAME") ?: "PDF Sənədi"
 
         val container = findViewById<LinearLayout>(R.id.contentContainer)
-        container.setPadding(16, 16, 16, 16) // A4 görünüşü üçün kənar boşluq
+        container.setPadding(16, 16, 16, 16)
         container.setBackgroundColor(Color.parseColor("#E0E0E0"))
 
         pdfView = PDFView(this, null).apply {
@@ -62,7 +61,6 @@ class PdfViewerActivity : BaseViewerActivity() {
         }
     }
 
-    // PDF DAXİLİNDƏ REAL AXTARIŞ (PdfBox ilə)
     fun showSearchDialog() {
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_TEXT
@@ -100,7 +98,7 @@ class PdfViewerActivity : BaseViewerActivity() {
 
                 withContext(Dispatchers.Main) {
                     if (foundPage != -1) {
-                        pdfView.jumpTo(foundPage - 1, true) // Səhifə indeksi 0-dan başlayır
+                        pdfView.jumpTo(foundPage - 1, true)
                         Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_SHORT).show()
@@ -114,10 +112,10 @@ class PdfViewerActivity : BaseViewerActivity() {
         }
     }
 
-    override fun onFontSizeChange(change: Int) {
-        if (change == 0) pdfView.zoomTo(1f) else {
-            val currentZoom = pdfView.zoom
-            pdfView.zoomTo(currentZoom + (change * 0.1f))
-        }
+    override fun onFontSizeChange(level: Int) {
+        // Base zoom = 1.0f. Hər level 0.2f dəyişir.
+        // -2 = 0.6f, -1 = 0.8f, 0 = 1.0f, 1 = 1.2f, 2 = 1.4f
+        val zoomLevel = 1.0f + (level * 0.2f)
+        pdfView.zoomTo(zoomLevel)
     }
 }
