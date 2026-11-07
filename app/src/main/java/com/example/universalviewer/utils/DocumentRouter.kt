@@ -28,9 +28,17 @@ object DocumentRouter {
         val prefManager = PreferenceManager(context)
         prefManager.saveRecentFile(uri, fileName)
 
+        // URI-yə daimi oxuma icazəsi veririk (Çökmənin qarşısını alır)
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: SecurityException) {
+            // Bəzi fayl menecerləri daimi icazə vermir, bu normaldır
+        }
+
         val mimeType = context.contentResolver.getType(uri)
-        
-        // BÜTÜN INTENTLƏRƏ İCAZƏ FLAG-I ƏLAVƏ EDİRİK (CRASH-İN QARŞISINI ALIR)
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
 
         try {
