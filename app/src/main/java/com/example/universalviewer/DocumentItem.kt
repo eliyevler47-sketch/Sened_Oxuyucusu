@@ -5,5 +5,6 @@ data class DocumentItem(
     val fileName: String,
     var isPinned: Boolean = false,
     var isFavorite: Boolean = false,
-    var lastOpened: Long = System.currentTimeMillis()
+    var lastOpened: Long = System.currentTimeMillis(),
+    var timeSpentMs: Long = 0L // Hər sənədin oxunma vaxtı (millisaniyə)
 )
