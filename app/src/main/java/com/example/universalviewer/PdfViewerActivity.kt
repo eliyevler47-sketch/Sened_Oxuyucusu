@@ -111,11 +111,4 @@ class PdfViewerActivity : BaseViewerActivity() {
             }
         }
     }
-
-    override fun onFontSizeChange(level: Int) {
-        // Base zoom = 1.0f. Hər level 0.2f dəyişir.
-        // -2 = 0.6f, -1 = 0.8f, 0 = 1.0f, 1 = 1.2f, 2 = 1.4f
-        val zoomLevel = 1.0f + (level * 0.2f)
-        pdfView.zoomTo(zoomLevel)
-    }
 }
