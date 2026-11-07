@@ -55,12 +55,10 @@ class OfficeViewerActivity : BaseViewerActivity() {
                     val inputStream: InputStream? = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val fileName = DocumentRouterHelper.getFileName(this@OfficeViewerActivity, uri).lowercase()
-                        
-                        // Fayl ölçüsünü yoxlayırıq (Çökmənin qarşısını almaq üçün)
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
-                        if (bytes.size > 20 * 1024 * 1024) { // 20 MB-dan böyükdürsə
+                        if (bytes.size > 20 * 1024 * 1024) { // 20 MB limit
                             withContext(Dispatchers.Main) {
                                 container.removeView(progressBar)
                                 Toast.makeText(this@OfficeViewerActivity, "Fayl çox böyükdür (Maks 20MB)", Toast.LENGTH_LONG).show()
@@ -184,7 +182,8 @@ class OfficeViewerActivity : BaseViewerActivity() {
     }
 
     private fun applyFontSizeToWebView() {
+        // -2, -1, 0, 1, 2 dəyərlərini pikselə çeviririk (12px - 24px arası)
         val newSize = 16 + (currentFontSizeLevel * 2)
-        webView.evaluateJavascript("document.body.style.fontSize='${newSize}px';", null)
+        webView.evaluateJavascript("setFontSize($newSize);", null)
     }
 }
