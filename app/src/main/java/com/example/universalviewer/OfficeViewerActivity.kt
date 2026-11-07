@@ -18,9 +18,7 @@ import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.apache.poi.ss.usermodel.DataFormatter
 import org.apache.poi.xslf.usermodel.XMLSlideShow
-import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.InputStream
 
 class OfficeViewerActivity : BaseViewerActivity() {
@@ -57,15 +55,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
                         val bytes = inputStream.readBytes()
                         inputStream.close()
 
-                        if (bytes.size > 20 * 1024 * 1024) {
-                            withContext(Dispatchers.Main) {
-                                container.removeView(progressBar)
-                                Toast.makeText(this@OfficeViewerActivity, "Fayl çox böyükdür (Maks 20MB)", Toast.LENGTH_LONG).show()
-                                finish()
-                            }
-                            return@launch
-                        }
-
                         withContext(Dispatchers.Main) {
                             container.removeView(progressBar)
                             container.gravity = android.view.Gravity.NO_GRAVITY
@@ -81,9 +70,9 @@ class OfficeViewerActivity : BaseViewerActivity() {
                                         webView.evaluateJavascript("renderDocx('$base64String');", null)
                                     } 
                                     else if (fileName.endsWith(".xlsx")) {
-                                        val html = convertExcelToHtml(bytes.inputStream())
-                                        val base64Html = Base64.encodeToString(html.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                                        webView.evaluateJavascript("renderHtml('$base64Html');", null)
+                                        // YENİ: SheetJS ilə 100% orijinal Excel
+                                        val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                                        webView.evaluateJavascript("renderExcel('$base64String');", null)
                                     } 
                                     else if (fileName.endsWith(".pptx")) {
                                         val html = convertPptToHtml(bytes.inputStream())
@@ -102,31 +91,6 @@ class OfficeViewerActivity : BaseViewerActivity() {
                 }
             }
         }
-    }
-
-    private fun convertExcelToHtml(inputStream: InputStream): String {
-        val workbook = XSSFWorkbook(inputStream)
-        val formatter = DataFormatter()
-        val evaluator = workbook.creationHelper.createFormulaEvaluator()
-        val html = StringBuilder("")
-
-        for (sheetIndex in 0 until workbook.numberOfSheets) {
-            val sheet = workbook.getSheetAt(sheetIndex)
-            html.append("<div class='paper'>")
-            html.append("<h3>📌 Vərəq: ${sheet.sheetName}</h3>")
-            html.append("<table>")
-            for ((rowIndex, row) in sheet.withIndex()) {
-                html.append("<tr>")
-                for (cell in row) {
-                    val cellValue = formatter.formatCellValue(cell, evaluator)
-                    if (rowIndex == 0) html.append("<th>$cellValue</th>") else html.append("<td>$cellValue</td>")
-                }
-                html.append("</tr>")
-            }
-            html.append("</table></div>")
-        }
-        workbook.close()
-        return html.toString()
     }
 
     private fun convertPptToHtml(inputStream: InputStream): String {
