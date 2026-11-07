@@ -85,12 +85,4 @@ class PreferenceManager(context: Context) {
     fun clearRecent() {
         prefs.edit().remove("document_list").apply()
     }
-
-    // ==================== ŞRİFİT ÖLÇÜSÜ ====================
-    // -2 = Daha Kiçik, -1 = Kiçik, 0 = Standart, 1 = Böyük, 2 = Daha Böyük
-    fun getFontSize(): Int = prefs.getInt("font_size", 0)
-
-    fun setFontSize(value: Int) {
-        prefs.edit().putInt("font_size", value.coerceIn(-2, 2)).apply()
-    }
 }
