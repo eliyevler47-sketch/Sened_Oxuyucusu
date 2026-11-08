@@ -86,37 +86,50 @@ class PdfViewerActivity : BaseViewerActivity() {
     }
 
     private fun searchPdf(query: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val document = PDDocument.load(pdfFile)
-                var foundPage = -1
-                
-                // Hər səhifə üçün ayrıca stripper yaradırıq ki, keçmiş məlumat qalmasın
-                for (i in 1..document.numberOfPages) {
-                    val stripper = PDFTextStripper()
-                    stripper.startPage = i
-                    stripper.endPage = i
-                    val text = stripper.getText(document)
-                    if (text.contains(query, ignoreCase = true)) {
-                        foundPage = i
-                        break
-                    }
-                }
-                document.close()
+    androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle("Axtarılır...")
+        .setMessage("Zəhmət olmasa gözləyin, '$query' axtarılır.")
+        .setCancelable(false)
+        .show()
 
-                withContext(Dispatchers.Main) {
-                    if (foundPage != -1) {
-                        pdfView.jumpTo(foundPage - 1, true) // jumpTo 0-dan başlayır
-                        Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_SHORT).show()
-                    }
+    lifecycleScope.launch(Dispatchers.IO) {
+        try {
+            val document = PDDocument.load(pdfFile)
+            var foundPage = -1
+            
+            // Hər səhifə üçün yeni stripper yaradırıq (yaddaş sızmasının qarşısını alır)
+            for (i in 1..document.numberOfPages) {
+                val stripper = PDFTextStripper()
+                stripper.startPage = i
+                stripper.endPage = i
+                val text = stripper.getText(document)
+                if (text.contains(query, ignoreCase = true)) {
+                    foundPage = i
+                    break
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@PdfViewerActivity, "Axtarış zamanı xəta: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+            document.close()
+
+            withContext(Dispatchers.Main) {
+                // Yuxarıdakı dialoqu bağlayırıq
+                val currentDialog = (this@PdfViewerActivity).window?.decorView?.findViewById<android.view.View>(android.R.id.content)
+                // Dialoqu təmizləmək üçün sadə bir üsul
+                try { 
+                    val dialog = supportFragmentManager.fragments.firstOrNull()
+                    (dialog as? androidx.fragment.app.DialogFragment)?.dismiss()
+                } catch (e: Exception) {}
+
+                if (foundPage != -1) {
+                    pdfView.jumpTo(foundPage - 1, true) // 0-dan başlayır
+                    Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_LONG).show()
                 }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@PdfViewerActivity, "Xəta: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
-}
+    }
