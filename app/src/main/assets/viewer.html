@@ -9,22 +9,15 @@
     <style>
         body { background-color: #E0E0E0; padding: 15px 5px; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; font-size: 16px; }
         .docx-wrapper { background: transparent !important; padding: 0 !important; }
-        .docx, .paper, .slide-content p { 
-            background: white; max-width: 800px; margin: 0 auto 20px auto; padding: 40px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 4px; color: #333; 
-        }
-        /* ORİJİNAL EXCEL CƏDVƏL GÖRÜNÜŞÜ */
+        .docx, .paper { background: white; max-width: 800px; margin: 0 auto 20px auto; padding: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 4px; color: #333; }
         #excel-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-        #excel-table td { border: 1px solid #D1D5DB; padding: 4px 8px; white-space: nowrap; }
-        
-        #pageInfo { position: fixed; left: 16px; bottom: 16px; background: rgba(30,27,75,0.85); color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 1000; }
+        #excel-table td, #excel-table th { border: 1px solid #D1D5DB; padding: 4px 8px; white-space: nowrap; }
         #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #1E1B4B; font-weight: bold; }
     </style>
 </head>
 <body>
     <div id="loading">Sənəd Yüklənir...</div>
     <div id="container"></div>
-    <div id="pageInfo">Səhifə: 1 / 1</div>
 
     <script>
         function renderDocx(base64Data) {
@@ -36,6 +29,8 @@
                 docx.renderAsync(bytes.buffer, document.getElementById("container"), null, {
                     className: "docx", inWrapper: true, ignoreWidth: false, ignoreHeight: false,
                     ignoreFonts: false, breakPages: true, renderHeaders: true, renderFooters: true
+                }).catch(function(err) {
+                    document.getElementById("container").innerHTML = "<h3 style='color:red;text-align:center;'>Xəta: Word faylı oxunmadı.</h3>";
                 });
             } catch(e) { document.getElementById('loading').innerText = "Xəta: " + e.message; }
         }
@@ -46,21 +41,18 @@
                 var binaryString = atob(base64Data);
                 var bytes = new Uint8Array(binaryString.length);
                 for (var i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
-                
                 var workbook = XLSX.read(bytes.buffer, {type: 'array'});
                 var firstSheet = workbook.SheetNames[0];
-                // SheetJS-in öz HTML çıxarıcısı ilə rəngləri və birləşmiş xanaları qoruyuruq
                 var html = XLSX.utils.sheet_to_html(workbook.Sheets[firstSheet], {id: "excel-table"});
-                
                 document.getElementById("container").innerHTML = "<div class='paper'>" + html + "</div>";
-            } catch(e) { document.getElementById('loading').innerText = "Xəta: " + e.message; }
+            } catch(e) { document.getElementById('loading').innerText = "Excel Xətası: " + e.message; }
         }
 
         function renderHtml(base64Html) {
             document.getElementById('loading').style.display = 'none';
             try {
                 var html = decodeURIComponent(escape(atob(base64Html)));
-                document.getElementById("container").innerHTML = html;
+                document.getElementById("container").innerHTML = "<div class='paper'>" + html + "</div>";
             } catch(e) { document.getElementById("container").innerHTML = atob(base64Html); }
         }
     </script>
