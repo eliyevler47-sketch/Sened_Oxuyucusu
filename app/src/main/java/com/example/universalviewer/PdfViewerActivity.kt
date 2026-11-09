@@ -8,24 +8,16 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
-import androidx.lifecycle.lifecycleScope
 import com.github.barteksc.pdfviewer.PDFView
 import com.google.android.material.appbar.MaterialToolbar
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.text.PDFTextStripper
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 class PdfViewerActivity : BaseViewerActivity() {
     private lateinit var pdfView: PDFView
-    private lateinit var pdfFile: File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
         PDFBoxResourceLoader.init(applicationContext)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
@@ -44,7 +36,7 @@ class PdfViewerActivity : BaseViewerActivity() {
         val uri = intent.data
         if (uri != null) {
             try {
-                pdfFile = File(cacheDir, "temp_view.pdf")
+                val pdfFile = File(cacheDir, "temp_view.pdf")
                 contentResolver.openInputStream(uri)?.use { input ->
                     pdfFile.outputStream().use { output -> input.copyTo(output) }
                 }
@@ -59,10 +51,9 @@ class PdfViewerActivity : BaseViewerActivity() {
                     .scrollHandle(null)
                     .enableAntialiasing(true)
                     .spacing(16)
-                    .pageSnap(false) // Sərbəst sürüşmə
+                    .pageSnap(false)
                     .load()
             } catch (e: Exception) { 
-                e.printStackTrace() 
                 Toast.makeText(this, "PDF açılarkən xəta baş verdi.", Toast.LENGTH_SHORT).show()
             }
         }
@@ -79,52 +70,12 @@ class PdfViewerActivity : BaseViewerActivity() {
             .setView(input)
             .setPositiveButton("Axtar") { _, _ ->
                 val query = input.text.toString()
-                if (query.isNotEmpty()) { searchPdf(query) }
+                if (query.isNotEmpty()) {
+                    // PDFView-in daxili axtarış funksiyası (Sarı rənglə işıqlandırır)
+                    pdfView.findAllAsync(query)
+                }
             }
             .setNegativeButton("Ləğv et", null)
             .show()
-    }
-
-    private fun searchPdf(query: String) {
-        val progressDialog = AlertDialog.Builder(this)
-            .setTitle("Axtarılır...")
-            .setMessage("Zəhmət olmasa gözləyin.")
-            .setCancelable(false)
-            .create()
-        progressDialog.show()
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val document = PDDocument.load(pdfFile)
-                var foundPage = -1
-                
-                for (i in 1..document.numberOfPages) {
-                    val stripper = PDFTextStripper()
-                    stripper.startPage = i
-                    stripper.endPage = i
-                    val text = stripper.getText(document)
-                    if (text.contains(query, ignoreCase = true)) {
-                        foundPage = i
-                        break
-                    }
-                }
-                document.close()
-
-                withContext(Dispatchers.Main) {
-                    progressDialog.dismiss()
-                    if (foundPage != -1) {
-                        pdfView.jumpTo(foundPage - 1, true)
-                        Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progressDialog.dismiss()
-                    Toast.makeText(this@PdfViewerActivity, "Xəta: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
     }
 }
