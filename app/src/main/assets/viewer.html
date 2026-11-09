@@ -12,6 +12,8 @@
         .docx, .paper { background: white; max-width: 800px; margin: 0 auto 20px auto; padding: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 4px; color: #333; }
         #excel-table { border-collapse: collapse; width: 100%; font-size: 13px; }
         #excel-table td, #excel-table th { border: 1px solid #D1D5DB; padding: 4px 8px; white-space: nowrap; }
+        
+        .page-number { text-align: center; font-size: 12px; color: #666; margin-bottom: 10px; }
         #loading { text-align: center; margin-top: 50px; font-size: 18px; color: #1E1B4B; font-weight: bold; }
     </style>
 </head>
@@ -20,6 +22,16 @@
     <div id="container"></div>
 
     <script>
+        function base64DecodeUnicode(str) {
+            try {
+                return decodeURIComponent(atob(str).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (e) {
+                return atob(str);
+            }
+        }
+
         function renderDocx(base64Data) {
             document.getElementById('loading').style.display = 'none';
             try {
@@ -27,8 +39,16 @@
                 var bytes = new Uint8Array(binaryString.length);
                 for (var i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
                 docx.renderAsync(bytes.buffer, document.getElementById("container"), null, {
-                    className: "docx", inWrapper: true, ignoreWidth: false, ignoreHeight: false,
-                    ignoreFonts: false, breakPages: true, renderHeaders: true, renderFooters: true
+                    className: "docx", inWrapper: true, breakPages: true
+                }).then(function() {
+                    // Hər səhifənin altına səhifə nömrəsi yazırıq
+                    var pages = document.querySelectorAll('.docx');
+                    pages.forEach(function(page, index) {
+                        var pNum = document.createElement('div');
+                        pNum.className = 'page-number';
+                        pNum.innerText = 'Səhifə ' + (index + 1);
+                        page.appendChild(pNum);
+                    });
                 }).catch(function(err) {
                     document.getElementById("container").innerHTML = "<h3 style='color:red;text-align:center;'>Xəta: Word faylı oxunmadı.</h3>";
                 });
@@ -51,7 +71,7 @@
         function renderHtml(base64Html) {
             document.getElementById('loading').style.display = 'none';
             try {
-                var html = decodeURIComponent(escape(atob(base64Html)));
+                var html = base64DecodeUnicode(base64Html);
                 document.getElementById("container").innerHTML = "<div class='paper'>" + html + "</div>";
             } catch(e) { document.getElementById("container").innerHTML = atob(base64Html); }
         }
