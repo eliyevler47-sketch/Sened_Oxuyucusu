@@ -1,53 +1,24 @@
 package com.example.universalviewer.ui
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.pdf.PdfDocument
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.universalviewer.ImageToPdfActivity
 import com.example.universalviewer.databinding.FragmentToolsBinding
 import com.example.universalviewer.databinding.ItemToolBinding
-import com.example.universalviewer.utils.DocumentRouter
 
 class ToolsFragment : Fragment() {
 
     private var _binding: FragmentToolsBinding? = null
     private val binding get() = _binding!!
-    private var pdfToSave: PdfDocument? = null
-
-    // Çoxlu şəkil seçmək üçün
-    private val multipleImagesPicker = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) { createPdfFromImages(uris) }
-    }
-
-    // PDF-i yadda saxlamaq üçün yer seçmək
-    private val savePdfLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri: Uri? ->
-        if (uri != null && pdfToSave != null) {
-            try {
-                requireContext().contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    pdfToSave?.writeTo(outputStream)
-                }
-                pdfToSave?.close()
-                Toast.makeText(requireContext(), "PDF uğurla yadda saxlanıldı!", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            pdfToSave?.close()
-        }
-        pdfToSave = null
-    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentToolsBinding.inflate(inflater, container, false)
@@ -76,7 +47,10 @@ class ToolsFragment : Fragment() {
         binding.rvConvertTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvConvertTools.adapter = ToolAdapter(convertTools) { name ->
             when(name) {
-                "Image to PDF" -> multipleImagesPicker.launch("image/*")
+                "Image to PDF" -> {
+                    // YENİ: Xüsusi Activity-ə yönləndiririk
+                    startActivity(Intent(requireContext(), ImageToPdfActivity::class.java))
+                }
                 else -> Toast.makeText(requireContext(), "$name funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
             }
         }
@@ -84,25 +58,6 @@ class ToolsFragment : Fragment() {
         binding.rvEditTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvEditTools.adapter = ToolAdapter(editTools) { name ->
             Toast.makeText(requireContext(), "$name funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun createPdfFromImages(uris: List<Uri>) {
-        try {
-            val pdfDocument = PdfDocument()
-            var pageNumber = 1
-            for (uri in uris) {
-                val bitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, pageNumber).create()
-                val page = pdfDocument.startPage(pageInfo)
-                page.canvas.drawBitmap(bitmap, 0f, 0f, null)
-                pdfDocument.finishPage(page)
-                pageNumber++
-            }
-            pdfToSave = pdfDocument
-            savePdfLauncher.launch("Birləşdirilmis_Shekiller.pdf")
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
