@@ -59,23 +59,66 @@ class PdfViewerActivity : BaseViewerActivity() {
         }
     }
 
-    fun showSearchDialog() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT
-            hint = "Axtarılacaq söz..."
-            setPadding(32, 32, 32, 32)
+    // PdfViewerActivity.kt daxilində
+fun showSearchDialog() {
+    val input = EditText(this).apply {
+        inputType = InputType.TYPE_CLASS_TEXT
+        hint = "Axtarılacaq söz..."
+        setPadding(32, 32, 32, 32)
+    }
+    AlertDialog.Builder(this)
+        .setTitle("PDF-də Axtar")
+        .setView(input)
+        .setPositiveButton("Axtar") { _, _ ->
+            val query = input.text.toString()
+            if (query.isNotEmpty()) {
+                // Köhnə PDFBox axtarış metodunu çağırırıq
+                searchPdfWithBox(query)
+            }
         }
-        AlertDialog.Builder(this)
-            .setTitle("PDF-də Axtar")
-            .setView(input)
-            .setPositiveButton("Axtar") { _, _ ->
-                val query = input.text.toString()
-                if (query.isNotEmpty()) {
-                    // PDFView-in daxili axtarış funksiyası (Sarı rənglə işıqlandırır)
-                    pdfView.findAllAsync(query)
+        .setNegativeButton("Ləğv et", null)
+        .show()
+}
+
+private fun searchPdfWithBox(query: String) {
+    val progressDialog = AlertDialog.Builder(this)
+        .setTitle("Axtarılır...")
+        .setMessage("Zəhmət olmasa gözləyin.")
+        .setCancelable(false)
+        .create()
+    progressDialog.show()
+
+    lifecycleScope.launch(Dispatchers.IO) {
+        try {
+            val document = PDDocument.load(pdfFile)
+            var foundPage = -1
+            
+            for (i in 1..document.numberOfPages) {
+                val stripper = PDFTextStripper()
+                stripper.startPage = i
+                stripper.endPage = i
+                val text = stripper.getText(document)
+                if (text.contains(query, ignoreCase = true)) {
+                    foundPage = i
+                    break
                 }
             }
-            .setNegativeButton("Ləğv et", null)
-            .show()
+            document.close()
+
+            withContext(Dispatchers.Main) {
+                progressDialog.dismiss()
+                if (foundPage != -1) {
+                    pdfView.jumpTo(foundPage - 1, true) // 0-dan başlayır
+                    Toast.makeText(this@PdfViewerActivity, "Tapıldı! Səhifə: $foundPage", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@PdfViewerActivity, "Söz tapılmadı.", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                progressDialog.dismiss()
+                Toast.makeText(this@PdfViewerActivity, "Xəta: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
