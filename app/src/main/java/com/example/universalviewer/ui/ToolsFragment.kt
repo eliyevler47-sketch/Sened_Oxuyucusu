@@ -1,9 +1,13 @@
 package com.example.universalviewer.ui
 
+import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,9 +24,29 @@ class ToolsFragment : Fragment() {
 
     private var _binding: FragmentToolsBinding? = null
     private val binding get() = _binding!!
+    private var pdfToSave: PdfDocument? = null
 
-    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) { DocumentRouter.routeFile(requireContext(), uri) }
+    // Çoxlu şəkil seçmək üçün
+    private val multipleImagesPicker = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) { createPdfFromImages(uris) }
+    }
+
+    // PDF-i yadda saxlamaq üçün yer seçmək
+    private val savePdfLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri: Uri? ->
+        if (uri != null && pdfToSave != null) {
+            try {
+                requireContext().contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    pdfToSave?.writeTo(outputStream)
+                }
+                pdfToSave?.close()
+                Toast.makeText(requireContext(), "PDF uğurla yadda saxlanıldı!", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            pdfToSave?.close()
+        }
+        pdfToSave = null
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -51,13 +75,34 @@ class ToolsFragment : Fragment() {
 
         binding.rvConvertTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvConvertTools.adapter = ToolAdapter(convertTools) { name ->
-            Toast.makeText(requireContext(), "$name tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
-            // Burada real funksiyalar çağırılacaq
+            when(name) {
+                "Image to PDF" -> multipleImagesPicker.launch("image/*")
+                else -> Toast.makeText(requireContext(), "$name funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.rvEditTools.layoutManager = GridLayoutManager(requireContext(), 4)
         binding.rvEditTools.adapter = ToolAdapter(editTools) { name ->
-            Toast.makeText(requireContext(), "$name tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "$name funksiyası tezliklə əlavə olunacaq!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun createPdfFromImages(uris: List<Uri>) {
+        try {
+            val pdfDocument = PdfDocument()
+            var pageNumber = 1
+            for (uri in uris) {
+                val bitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, pageNumber).create()
+                val page = pdfDocument.startPage(pageInfo)
+                page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+                pdfDocument.finishPage(page)
+                pageNumber++
+            }
+            pdfToSave = pdfDocument
+            savePdfLauncher.launch("Birləşdirilmis_Shekiller.pdf")
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Xəta: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
