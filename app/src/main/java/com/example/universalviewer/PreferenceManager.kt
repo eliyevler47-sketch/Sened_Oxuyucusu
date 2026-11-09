@@ -10,7 +10,6 @@ class PreferenceManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("UniversalViewerPrefs", Context.MODE_PRIVATE)
 
-    // ==================== SƏNƏDİN OXUNMA VAXTI ====================
     fun addDocumentUsageTime(uriString: String, millis: Long) {
         if (millis <= 0) return
         val list = getDocumentList().toMutableList()
@@ -21,11 +20,9 @@ class PreferenceManager(context: Context) {
         }
     }
 
-    // ==================== SON SƏNƏDLƏR (RECENT) ====================
     fun saveRecentFile(uri: Uri, fileName: String) {
         val list = getDocumentList().toMutableList()
         val uriString = uri.toString()
-
         val existingIndex = list.indexOfFirst { it.uri == uriString }
         if (existingIndex != -1) {
             val existing = list[existingIndex]
@@ -35,7 +32,6 @@ class PreferenceManager(context: Context) {
         } else {
             list.add(0, DocumentItem(uriString, fileName))
         }
-
         val trimmedList = list.take(20)
         prefs.edit().putString("document_list", Gson().toJson(trimmedList)).apply()
     }
@@ -43,37 +39,28 @@ class PreferenceManager(context: Context) {
     fun getDocumentList(): List<DocumentItem> {
         val json = prefs.getString("document_list", "[]")
         val type = object : TypeToken<List<DocumentItem>>() {}.type
-        return try {
-            Gson().fromJson(json, type) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
-        }
+        return try { Gson().fromJson(json, type) ?: emptyList() } catch (e: Exception) { emptyList() }
     }
 
     fun getSortedDocumentList(): List<DocumentItem> {
         return getDocumentList().sortedWith(
             compareByDescending<DocumentItem> { it.isPinned }
-                .thenByDescending { it.isFavorite }
                 .thenByDescending { it.lastOpened }
         )
     }
 
-    fun togglePin(uri: String) {
+    // ==================== BOOKMARKS (ƏLƏFÇİNLƏR) ====================
+    fun toggleBookmark(uri: String) {
         val list = getDocumentList().toMutableList()
         val index = list.indexOfFirst { it.uri == uri }
         if (index != -1) {
-            list[index].isPinned = !list[index].isPinned
+            list[index].isFavorite = !list[index].isFavorite // isFavorite-i bookmark kimi istifadə edirik
             prefs.edit().putString("document_list", Gson().toJson(list)).apply()
         }
     }
 
-    fun toggleFavorite(uri: String) {
-        val list = getDocumentList().toMutableList()
-        val index = list.indexOfFirst { it.uri == uri }
-        if (index != -1) {
-            list[index].isFavorite = !list[index].isFavorite
-            prefs.edit().putString("document_list", Gson().toJson(list)).apply()
-        }
+    fun getBookmarkedDocuments(): List<DocumentItem> {
+        return getDocumentList().filter { it.isFavorite }
     }
 
     fun removeRecent(uri: String) {
