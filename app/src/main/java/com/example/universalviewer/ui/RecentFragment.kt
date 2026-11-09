@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.universalviewer.DocumentItem
 import com.example.universalviewer.PreferenceManager
 import com.example.universalviewer.databinding.FragmentRecentBinding
 import com.example.universalviewer.utils.DocumentRouter
@@ -40,11 +39,13 @@ class RecentFragment : Fragment() {
         adapter = RecentAdapter(
             onOpen = { item -> DocumentRouter.routeFile(requireContext(), Uri.parse(item.uri)) },
             onPin = { item ->
-                prefManager.togglePin(item.uri)
+                // Pin düyməsi də artıq Bookmark kimi işləyəcək
+                prefManager.toggleBookmark(item.uri)
                 loadData()
             },
             onFavorite = { item ->
-                prefManager.toggleFavorite(item.uri)
+                // Favori düyməsi də Bookmark kimi işləyəcək
+                prefManager.toggleBookmark(item.uri)
                 loadData()
             },
             onDelete = { item ->
